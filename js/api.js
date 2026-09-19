@@ -82,6 +82,12 @@ var Api = (function () {
         if (typeof mutate === "function") {
           current = mutate(fresh.data) || current;
         }
+        // Never write an empty document. A mutator that returns nothing (or
+        // a caller that passed null with no mutator) must fail loudly instead
+        // of wiping the file.
+        if (current === null || current === undefined) {
+          throw new Error("refusing to write empty document");
+        }
         var payload = {
           message: message,
           content: b64encode(current),
