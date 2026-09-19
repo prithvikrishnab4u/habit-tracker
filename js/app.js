@@ -16,6 +16,7 @@
       t.classList.toggle("active", t.getAttribute("data-tab") === name);
     });
     if (name === "today") Today.render();
+    if (name === "pod") Pod.render();
     window.scrollTo(0, 0);
   }
 
@@ -68,6 +69,7 @@
       if (!document.hidden && Store.isSetup() && navigator.onLine) {
         Store.load().then(function () {
           if (!document.getElementById("screen-today").classList.contains("hidden")) Today.render();
+          if (!document.getElementById("screen-pod").classList.contains("hidden")) Pod.render();
         }).catch(function () {});
       }
     });
