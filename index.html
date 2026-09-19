@@ -11,6 +11,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Habits">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
 <link rel="stylesheet" href="css/app.css">
 </head>
 <body>
@@ -34,10 +37,7 @@
     <div id="pod-root"></div>
   </section>
   <section id="screen-habits" class="screen hidden" aria-label="Habits">
-    <div class="placeholder glass">
-      <h1>Habits</h1>
-      <p>Habit management arrives in Phase 4.</p>
-    </div>
+    <div id="manage-root"></div>
   </section>
 
   <nav id="tabbar" class="glass hidden" aria-label="Primary">
@@ -65,6 +65,7 @@
 <script src="js/data.js"></script>
 <script src="js/today.js"></script>
 <script src="js/pod.js"></script>
+<script src="js/manage.js"></script>
 <script src="js/onboarding.js"></script>
 <script src="js/app.js"></script>
 </body>
