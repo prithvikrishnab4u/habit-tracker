@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<title>Habit Tracker</title>
+<meta name="description" content="One glance for both of you. A private habit tracker for two people.">
+<meta name="theme-color" content="#05060A" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#EEF0F6" media="(prefers-color-scheme: light)">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Habits">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<div id="wallpaper" aria-hidden="true">
+  <div class="orb orb-you"></div>
+  <div class="orb orb-partner"></div>
+  <div class="orb orb-accent"></div>
+</div>
+
+<div id="offline-banner" class="hidden" role="status">You are offline. Logging is paused.</div>
+
+<main id="app">
+  <!-- Onboarding -->
+  <section id="screen-onboarding" class="screen" aria-label="Setup"></section>
+
+  <!-- App screens (content lands in later phases) -->
+  <section id="screen-today" class="screen hidden" aria-label="Today">
+    <div class="placeholder glass">
+      <h1>Today</h1>
+      <p>Habit rows arrive in Phase 2.</p>
+    </div>
+  </section>
+  <section id="screen-pod" class="screen hidden" aria-label="Pod">
+    <div class="placeholder glass">
+      <h1>Pod</h1>
+      <p>The sync view arrives in Phase 3.</p>
+    </div>
+  </section>
+  <section id="screen-habits" class="screen hidden" aria-label="Habits">
+    <div class="placeholder glass">
+      <h1>Habits</h1>
+      <p>Habit management arrives in Phase 4.</p>
+    </div>
+  </section>
+
+  <nav id="tabbar" class="glass hidden" aria-label="Primary">
+    <button class="tab active" data-tab="today" aria-label="Today">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 7v5l3.5 2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <span>Today</span>
+    </button>
+    <button class="tab" data-tab="pod" aria-label="Pod">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8.5" cy="12" r="5.5" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="15.5" cy="12" r="5.5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+      <span>Pod</span>
+    </button>
+    <button class="tab" data-tab="habits" aria-label="Habits">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      <span>Habits</span>
+    </button>
+  </nav>
+</main>
+
+<div id="toast" class="glass hidden" role="status"></div>
+
+<script src="js/util.js"></script>
+<script src="js/api.js"></script>
+<script src="js/demo.js"></script>
+<script src="js/store.js"></script>
+<script src="js/onboarding.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
