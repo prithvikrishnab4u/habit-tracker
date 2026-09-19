@@ -17,6 +17,7 @@
     });
     if (name === "today") Today.render();
     if (name === "pod") Pod.render();
+    if (name === "habits") Manage.render();
     window.scrollTo(0, 0);
   }
 
