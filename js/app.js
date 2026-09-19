@@ -15,7 +15,11 @@
     document.querySelectorAll(".tab").forEach(function (t) {
       t.classList.toggle("active", t.getAttribute("data-tab") === name);
     });
+    if (name === "today") Today.render();
+    window.scrollTo(0, 0);
   }
+
+  window.App = { showTab: showTab };
 
   function showShell() {
     document.getElementById("screen-onboarding").classList.add("hidden");
@@ -31,6 +35,7 @@
 
   function boot() {
     Store.applyColor();
+    Today.init();
     setOfflineBanner();
     window.addEventListener("online", function () {
       document.getElementById("offline-banner").classList.add("hidden");
@@ -61,7 +66,9 @@
     // habit data in v1).
     document.addEventListener("visibilitychange", function () {
       if (!document.hidden && Store.isSetup() && navigator.onLine) {
-        Store.load().catch(function () {});
+        Store.load().then(function () {
+          if (!document.getElementById("screen-today").classList.contains("hidden")) Today.render();
+        }).catch(function () {});
       }
     });
   }
