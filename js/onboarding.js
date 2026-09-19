@@ -33,21 +33,24 @@ var Onboarding = (function () {
       '<p class="footnote">Private by design. Your data lives in your own GitHub repo, not on our servers.</p>' +
       "</div>";
     document.getElementById("ob-next").addEventListener("click", function () {
-      if (isStandalone()) showPerson();
-      else showInstall();
+      // Only iOS/iPadOS needs the install gate: there, Safari and the
+      // installed app do not share storage. Elsewhere the gate would block
+      // people who never install.
+      if (isIOS() && !isStandalone()) showInstall();
+      else showPerson();
     });
   }
 
   function showInstall() {
-    var ios = isIOS();
-    var how = ios
-      ? "<p>Tap <b>Share</b>, then <b>Add to Home Screen</b>.</p><p>This keeps your login on the home-screen app, separate from Safari.</p>"
-      : "<p>Open the browser menu, then tap <b>Install app</b> or <b>Add to Home screen</b>.</p>";
+    // Reached only on iOS/iPadOS (see showWelcome).
+    var ipad = /Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1;
     root.innerHTML =
       '<div class="onb">' + mark() + stepsBar(1, 4) +
       "<h1>Install first</h1>" +
       '<p class="lede">Add Habit Tracker to your home screen so it opens like a real app.</p>' +
-      '<div class="install-card glass"><h2>' + (ios ? "iPhone" : "Android") + "</h2>" + how + "</div>" +
+      '<div class="install-card glass"><h2>' + (ipad ? "iPad" : "iPhone") + "</h2>" +
+      "<p>Tap <b>Share</b>, then <b>Add to Home Screen</b>.</p>" +
+      "<p>This keeps your login on the home-screen app, separate from Safari.</p></div>" +
       '<button class="btn" id="ob-check">I added it, continue</button>' +
       '<p class="footnote" id="ob-hint"></p>' +
       "</div>";

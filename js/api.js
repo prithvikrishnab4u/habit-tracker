@@ -54,7 +54,11 @@ var Api = (function () {
     var url = contentsUrl(path) + "?ref=" + encodeURIComponent(cfg.branch);
     return fetch(url, { headers: headers(), cache: "no-store" }).then(function (res) {
       if (res.status === 404) return { data: null, sha: null };
-      if (!res.ok) throw new Error("read failed: " + res.status);
+      if (!res.ok) {
+        var readErr = new Error("read failed: " + res.status);
+        readErr.status = res.status;
+        throw readErr;
+      }
       return res.json().then(function (body) {
         return { data: JSON.parse(b64decode(body.content)), sha: body.sha };
       });
@@ -72,7 +76,10 @@ var Api = (function () {
     function attemptWrite() {
       attempt++;
       return getJSON(path).then(function (fresh) {
-        if (attempt > 1 && typeof mutate === "function" && fresh.data) {
+        // Always rebuild from fresh data when a mutator exists. The first
+        // attempt used to write `obj` verbatim, which wiped the file when the
+        // caller passed null and relied on the mutator.
+        if (typeof mutate === "function") {
           current = mutate(fresh.data) || current;
         }
         var payload = {
@@ -92,7 +99,9 @@ var Api = (function () {
           if ((res.status === 409 || res.status === 422) && attempt < 3) {
             return attemptWrite();
           }
-          throw new Error("write failed: " + res.status);
+          var writeErr = new Error("write failed: " + res.status);
+          writeErr.status = res.status;
+          throw writeErr;
         });
       });
     }

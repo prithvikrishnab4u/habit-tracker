@@ -364,6 +364,10 @@ var Today = (function () {
       });
       body.innerHTML = html;
       wire(dateStr, me, partner);
+    }).catch(function () {
+      body.innerHTML = '<div class="load-error"><p>Couldn\'t load your data. Check your connection.</p>' +
+        '<button class="btn" id="today-retry">Retry</button></div>';
+      document.getElementById("today-retry").addEventListener("click", render);
     });
   }
 

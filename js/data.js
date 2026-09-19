@@ -9,6 +9,18 @@ var Data = (function () {
   var cache = {};   // "date/person" -> { entries } (entries may be {})
   var undoStack = [];
 
+  // Serializes writes per file so fast taps can't interleave read-modify-write
+  // cycles and lose counts. Returns fn's promise so callers still see
+  // success/failure; the stored tail never rejects.
+  var queues = {};
+
+  function enqueue(filePath, fn) {
+    var tail = queues[filePath] || Promise.resolve();
+    var run = tail.then(fn, fn);
+    queues[filePath] = run.catch(function () {});
+    return run;
+  }
+
   function key(dateStr, personId) { return dateStr + "/" + personId; }
 
   function path(dateStr, personId) {
@@ -27,9 +39,6 @@ var Data = (function () {
       var entries = (res.data && res.data.entries) || {};
       cache[k] = { entries: entries };
       return entries;
-    }).catch(function () {
-      cache[k] = { entries: {} };
-      return {};
     });
   }
 
@@ -53,14 +62,16 @@ var Data = (function () {
     if (ui && ui.pending) ui.pending(true);
 
     var doc = { date: dateStr, person: personId, entries: entries };
-    Api.putJSON(path(dateStr, personId), doc, "Check-in " + dateStr + " " + personId,
-      function (fresh) {
-        var merged = Object.assign({}, (fresh && fresh.entries) || {});
-        if (newVal === undefined || newVal === null) delete merged[habitId];
-        else merged[habitId] = newVal;
-        return { date: dateStr, person: personId, entries: merged };
-      }
-    ).then(function () {
+    enqueue(path(dateStr, personId), function () {
+      return Api.putJSON(path(dateStr, personId), doc, "Check-in " + dateStr + " " + personId,
+        function (fresh) {
+          var merged = Object.assign({}, (fresh && fresh.entries) || {});
+          if (newVal === undefined || newVal === null) delete merged[habitId];
+          else merged[habitId] = newVal;
+          return { date: dateStr, person: personId, entries: merged };
+        }
+      );
+    }).then(function () {
       if (ui && ui.pending) ui.pending(false);
       if (ui && ui.ok) ui.ok();
     }).catch(function () {
@@ -84,13 +95,24 @@ var Data = (function () {
     else entries[last.habitId] = last.prev;
     cache[k] = { entries: entries };
     var doc = { date: last.date, person: last.person, entries: entries };
-    return Api.putJSON(path(last.date, last.person), doc, "Undo check-in " + last.date)
-      .then(function () { return last; });
+    return enqueue(path(last.date, last.person), function () {
+      return Api.putJSON(path(last.date, last.person), doc, "Undo check-in " + last.date,
+        function (fresh) {
+          var merged = Object.assign({}, (fresh && fresh.entries) || {});
+          if (last.prev === undefined || last.prev === null) delete merged[last.habitId];
+          else merged[last.habitId] = last.prev;
+          return { date: last.date, person: last.person, entries: merged };
+        });
+    }).then(function () { return last; });
   }
 
   function peekUndo() { return undoStack[undoStack.length - 1] || null; }
 
   function invalidate(dateStr, personId) { delete cache[key(dateStr, personId)]; }
+
+  function invalidateAll() {
+    for (var k in cache) delete cache[k];
+  }
 
   return {
     fetchCheckin: fetchCheckin,
@@ -99,6 +121,7 @@ var Data = (function () {
     saveEntry: saveEntry,
     undoLast: undoLast,
     peekUndo: peekUndo,
-    invalidate: invalidate
+    invalidate: invalidate,
+    invalidateAll: invalidateAll
   };
 })();

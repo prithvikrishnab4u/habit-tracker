@@ -16,7 +16,9 @@ function addDays(dateStr, n) {
 }
 
 function isIOS() {
-  return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  if (/iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream) return true;
+  // iPadOS 13+ reports a Mac user agent; touch points give it away.
+  return /Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1;
 }
 
 function isStandalone() {

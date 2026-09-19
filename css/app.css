@@ -938,3 +938,6 @@ body {
   }
   .orb { opacity: calc(var(--orb-opacity) * 0.5); }
 }
+
+.load-error { padding: 40px 24px; text-align: center; }
+.load-error p { margin-bottom: 16px; color: var(--ink-60); }

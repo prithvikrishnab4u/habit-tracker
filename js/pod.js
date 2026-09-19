@@ -170,6 +170,10 @@ var Pod = (function () {
       });
 
       if (todaySync) showSyncBanner();
+    }).catch(function () {
+      root.innerHTML = '<div class="load-error"><p>Couldn\'t load the pod view. Check your connection.</p>' +
+        '<button class="btn" id="pod-retry">Retry</button></div>';
+      document.getElementById("pod-retry").addEventListener("click", render);
     });
   }
 
