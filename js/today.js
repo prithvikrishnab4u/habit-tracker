@@ -881,6 +881,8 @@ var Today = (function () {
       "</div></div>";
   }
 
+  var renderToken = 0;
+
   function render() {
     var root = document.getElementById("today-root");
     var me = Store.get("person");
@@ -888,12 +890,13 @@ var Today = (function () {
     if (!root || !me || !habitsDoc) return;
     var dateStr = viewedDate();
     var partner = Store.partnerId();
+    var token = ++renderToken;
 
     root.innerHTML = skeletonHTML();
 
     var fetches = [Data.fetchCheckin(dateStr, me)];
     if (partner) fetches.push(Data.fetchCheckin(dateStr, partner));
-    var monday = mondayOf(localDate());
+    var monday = mondayOf(dateStr);
     for (var i = 0; i < 7; i++) {
       var d = addDays(monday, i);
       fetches.push(Data.fetchCheckin(d, me));
@@ -901,8 +904,10 @@ var Today = (function () {
     }
 
     Promise.all(fetches).then(function () {
+      if (token !== renderToken) return; // stale render (fast day switching)
       paint(dateStr, me, partner, habitsDoc.habits);
     }, function (err) {
+      if (token !== renderToken) return; // stale render (fast day switching)
       var status = err && err.status;
       if (status === 401 || status === 403) {
         // Bad/revoked token: reload so the boot path restarts onboarding.
