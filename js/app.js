@@ -15,6 +15,7 @@
     document.querySelectorAll(".tab").forEach(function (t) {
       t.classList.toggle("active", t.getAttribute("data-tab") === name);
     });
+    if (window.Today && Today.clearToast) Today.clearToast();
     if (name === "today") Today.render();
     if (name === "pod") Pod.render();
     if (name === "habits") Manage.render();
