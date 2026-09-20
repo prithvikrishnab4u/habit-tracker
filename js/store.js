@@ -1,21 +1,22 @@
-/* App state. One device, one person. Profile and color live in
-   localStorage; the token lives in localStorage on the device (one
-   fine-grained PAT per device). Repo coordinates are never committed. */
+/* App state. One device, one person. The person id and token live in
+   localStorage on the device (one fine-grained PAT per device).
+   Person colors live in pod.json per member (as palette ids); the palette
+   itself is in js/colors.js. Repo coordinates are never committed. */
 
 var Store = (function () {
   var LS = {
     person: "ht.person",
-    color: "ht.color",
     token: "ht.token",
     owner: "ht.owner",
     repo: "ht.repo"
   };
 
-  var DEFAULT_COLORS = { prithvi: "#0A84FF", sowmya: "#FF9F0A" };
+  // One-time cleanup: colors used to live in localStorage; they now come
+  // from pod.json.
+  try { localStorage.removeItem("ht.color"); } catch (e) {}
 
   var state = {
     person: localStorage.getItem(LS.person),
-    color: localStorage.getItem(LS.color),
     token: localStorage.getItem(LS.token),
     owner: localStorage.getItem(LS.owner) || "prithvikrishnab4u",
     repo: localStorage.getItem(LS.repo) || "habit-tracker-data",
@@ -31,21 +32,32 @@ var Store = (function () {
   function setPerson(id) {
     state.person = id;
     localStorage.setItem(LS.person, id);
-    if (!state.color && DEFAULT_COLORS[id]) setColor(DEFAULT_COLORS[id]);
   }
 
-  function setColor(hex) {
-    state.color = hex;
-    localStorage.setItem(LS.color, hex);
-    applyColor();
-  }
-
-  function applyColor() {
-    if (state.color) {
-      document.documentElement.style.setProperty("--person", state.color);
+  // Palette id for a member. Falls back to the per-person default when
+  // pod.json is not loaded yet or the member has no color stored.
+  function getColorId(personId) {
+    var id = personId || state.person;
+    if (state.pod && state.pod.members) {
+      var m = state.pod.members.filter(function (x) { return x.id === id; })[0];
+      if (m && Colors.isValid(m.color)) return m.color;
     }
+    return Colors.DEFAULTS[id] || "blue";
+  }
+
+  function applyColor(colorId) {
+    var id = colorId || getColorId();
+    var hex = Colors.get(id).base;
+    document.documentElement.style.setProperty("--person", hex);
     var orb = document.querySelector(".orb-you");
-    if (orb && state.color) orb.style.background = state.color;
+    if (orb) orb.style.background = hex;
+    var pid = partnerId();
+    if (pid) {
+      var phex = Colors.get(getColorId(pid)).base;
+      document.documentElement.style.setProperty("--partner", phex);
+      var porb = document.querySelector(".orb-partner");
+      if (porb) porb.style.background = phex;
+    }
   }
 
   function setToken(t) {
@@ -73,8 +85,7 @@ var Store = (function () {
   }
 
   function personColor(id) {
-    if (id === state.person) return state.color || DEFAULT_COLORS[id] || "#0A84FF";
-    return DEFAULT_COLORS[id] || "#FF9F0A";
+    return Colors.get(getColorId(id)).base;
   }
 
   // Load pod.json + habits.json from the data repo into memory.
@@ -91,10 +102,8 @@ var Store = (function () {
 
   function signOut() {
     localStorage.removeItem(LS.person);
-    localStorage.removeItem(LS.color);
     localStorage.removeItem(LS.token);
     state.person = null;
-    state.color = null;
     state.token = null;
     state.pod = null;
     state.habits = null;
@@ -105,7 +114,7 @@ var Store = (function () {
   return {
     isSetup: isSetup,
     setPerson: setPerson,
-    setColor: setColor,
+    getColorId: getColorId,
     applyColor: applyColor,
     setToken: setToken,
     setRepo: setRepo,
@@ -114,7 +123,6 @@ var Store = (function () {
     personColor: personColor,
     load: load,
     signOut: signOut,
-    get: get,
-    DEFAULT_COLORS: DEFAULT_COLORS
+    get: get
   };
 })();

@@ -105,7 +105,9 @@
     });
     document.getElementById("le-token").addEventListener("click", function () {
       scr.innerHTML = "";
-      Onboarding.start(scr, showShell);
+      // Re-token path: jumps straight to the handshake step with its own
+      // title. Person and color are kept.
+      Onboarding.start(scr, showShell, { retoken: true });
     });
   }
 
