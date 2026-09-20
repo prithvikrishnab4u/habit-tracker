@@ -52,7 +52,9 @@ var Manage = (function () {
     sheet.className = "sheet glass";
     sheet.setAttribute("role", "dialog");
     sheet.innerHTML =
-      "<h2>New habit</h2>" +
+      '<span class="grab" aria-hidden="true"></span>' +
+      '<div class="sheet-headrow"><span class="sheet-title">New habit</span>' +
+      '<button class="sheet-x" id="ah-x" aria-label="Close"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></div>' +
       '<p class="sheet-sub">It appears on both phones as soon as it saves.</p>' +
       '<div class="token-card" style="padding:0;margin-bottom:20px;background:none;border:0;box-shadow:none;">' +
       '<label for="ah-name">Name</label>' +
@@ -99,6 +101,7 @@ var Manage = (function () {
       setTimeout(function () { scrim.remove(); sheet.remove(); }, 240);
     }
     scrim.addEventListener("click", close);
+    sheet.querySelector("#ah-x").addEventListener("click", close);
 
     var partnerTarget = 1;
     function segWire(sel, attr, set) {
@@ -199,6 +202,7 @@ var Manage = (function () {
   function render() {
     root = document.getElementById("manage-root");
     if (!root || !Store.get("habits")) return;
+    if (window.Today && typeof Today.paintInkVars === "function") Today.paintInkVars();
     var habits = Store.get("habits").habits;
     root.innerHTML =
       '<div class="sync-head"><h1>Habits</h1>' +
