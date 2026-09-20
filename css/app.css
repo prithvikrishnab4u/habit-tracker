@@ -94,6 +94,7 @@ html, body {
   height: 100%;
   overscroll-behavior-y: none;
 }
+html { touch-action: manipulation; }
 
 body {
   font-family: var(--font-text);
@@ -177,9 +178,22 @@ button { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent
   padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);
 }
 
+/* Fixed status bar band: covers content scrolling under the clock/battery.
+   Glass background + blur, above content, below sheets. */
+#statusbar-band {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: env(safe-area-inset-top);
+  background: var(--glass);
+  backdrop-filter: var(--blur);
+  -webkit-backdrop-filter: var(--blur);
+  z-index: 25;
+  pointer-events: none;
+}
+
 .screen {
   padding: 58px 16px 128px;
-  min-height: 100dvh;
+  min-height: calc(100dvh - env(safe-area-inset-top));
 }
 
 .hidden { display: none !important; }
@@ -564,7 +578,7 @@ button { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent
 }
 
 /* Together card */
-.together-card { border-radius: 30px; padding: 16px 18px; display: flex; flex-direction: column; gap: 14px; }
+.together-card { border-radius: 28px; padding: 14px 16px 12px; display: flex; flex-direction: column; gap: 10px; }
 .tg-head { display: flex; align-items: center; justify-content: space-between; line-height: 1.4; }
 .tg-label { font-size: 13px; font-weight: 600; letter-spacing: 0.02em; color: var(--ink-60); }
 .tg-status { font-size: 13px; font-weight: 600; color: var(--ink-30); }
@@ -573,9 +587,9 @@ button { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent
   .tg-status.is-sync { color: #AF52DE; }
 }
 .tg-mid { display: flex; align-items: center; gap: 10px; }
-.sphere-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.sphere-wrap { display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .sphere {
-  width: 92px; height: 92px;
+  width: 64px; height: 64px;
   border-radius: 50%;
   position: relative;
   overflow: hidden;
@@ -602,8 +616,8 @@ button { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent
 .sphere-liquid.empty .wave { display: none; }
 .sphere-gloss {
   position: absolute;
-  top: 9px; left: 17px;
-  width: 38px; height: 18px;
+  top: 6px; left: 11px;
+  width: 26px; height: 12px;
   border-radius: 50%;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0));
   transform: rotate(-24deg);
@@ -613,7 +627,7 @@ button { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent
   position: absolute; top: 0; left: 0; right: 0; bottom: 0;
   display: flex; align-items: center; justify-content: center;
   font-family: var(--font-num);
-  font-size: 22px; font-weight: 600;
+  font-size: 16px; font-weight: 600;
   color: var(--ink);
 }
 .sphere-pct.on-liquid { color: #fff; }
@@ -687,7 +701,7 @@ button { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent
 .skel-tile.skel-tall { grid-row: span 2; height: 312px; }
 
 /* Tile grid */
-.tile-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: 172px 172px; gap: 12px; }
+.tile-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: 150px 104px; gap: 12px; }
 .tile {
   position: relative;
   border-radius: 30px;
@@ -708,13 +722,14 @@ button { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent
   backdrop-filter: var(--blur);
   -webkit-backdrop-filter: var(--blur);
   transition: transform 320ms var(--spring);
-  touch-action: pan-y;
+  touch-action: manipulation;
   user-select: none;
   -webkit-user-select: none;
 }
-.tile-water { grid-row: span 2; }
 .tile-ex { background: var(--ex-tint), var(--glass); }
-.tile-steps { background: var(--steps-tint), var(--glass); }
+.tile-steps { background: var(--steps-tint), var(--glass); display: grid; grid-template-rows: auto 1fr; }
+.s-bottom { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
+.trail { width: 150px; height: 38px; flex-shrink: 0; }
 .tile.pressing { transform: scale(0.97); }
 
 .t-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; position: relative; z-index: 2; }
@@ -764,17 +779,31 @@ button { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent
 .t-main { position: relative; z-index: 2; display: flex; flex-direction: column; gap: 2px; }
 .w-num {
   font-family: var(--font-num);
-  font-size: 60px; line-height: 64px;
+  font-size: 44px; line-height: 48px;
   font-weight: 600;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
   color: var(--ink);
 }
-.w-num small { font-size: 22px; font-weight: 500; opacity: 0.6; }
+.w-num small { font-size: 18px; font-weight: 500; opacity: 0.6; }
 .t-cap { font-size: 13px; color: var(--ink-60); }
+.t-cap-pour { font-size: 12px; }
+.t-chip-abs {
+  position: absolute;
+  top: 12px; right: 12px;
+  z-index: 3;
+}
+.t-chip-abs .t-chip {
+  font-size: 12px;
+  padding: 2px 8px 2px 2px;
+}
+.t-chip-abs .t-chip .avatar {
+  width: 18px; height: 18px;
+  font-size: 10px;
+}
 .t-check {
-  position: absolute; top: 14px; right: 14px;
-  width: 26px; height: 26px;
+  position: absolute; bottom: 12px; right: 12px;
+  width: 24px; height: 24px;
   border-radius: 50%;
   background: var(--water-ink);
   color: #fff;
@@ -799,7 +828,7 @@ button { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent
 .tile-ex, .tile-steps { padding: 14px 14px 12px 16px; }
 .x-num {
   font-family: var(--font-num);
-  font-size: 40px; line-height: 42px;
+  font-size: 36px; line-height: 40px;
   font-weight: 600;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
@@ -807,7 +836,7 @@ button { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent
 .x-num small { font-size: 18px; font-weight: 500; color: var(--ink-60); }
 .vials { display: flex; gap: 5px; align-items: flex-end; margin-top: auto; }
 .vial {
-  width: 13px; height: 48px;
+  width: 12px; height: 40px;
   border-radius: 7px;
   overflow: hidden;
   background: var(--tube);
@@ -856,6 +885,34 @@ button { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent
 
 /* Generic tile */
 .g-state { font-family: var(--font-num); font-size: 30px; font-weight: 600; margin-top: auto; position: relative; z-index: 2; }
+/* Generic habit tile (extra habits) */
+.tile-generic { display: flex; flex-direction: column; justify-content: space-between; }
+.g-num {
+  font-family: var(--font-num);
+  font-size: 36px; line-height: 40px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+  position: relative; z-index: 2;
+}
+.g-num small { font-size: 18px; font-weight: 500; color: var(--ink-60); }
+.g-bar {
+  display: block;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--tube);
+  overflow: hidden;
+  position: relative; z-index: 2;
+  margin-top: 8px;
+}
+.g-bar i {
+  display: block;
+  height: 100%;
+  background: var(--gtint, #A259FF);
+  border-radius: 2px;
+  transition: width 900ms var(--ease);
+}
 
 /* Add habit */
 .add-habit {
@@ -1080,10 +1137,12 @@ button { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent
   border: 0;
   border-bottom: 0.5px solid var(--hair);
   font-family: var(--font-text);
+  font-size: 17px;
   color: var(--ink);
   text-align: left;
   min-height: 60px;
-  cursor: default;
+  cursor: pointer;
+  touch-action: manipulation;
 }
 .habit-row:last-child { border-bottom: 0; }
 .habit-icon {
