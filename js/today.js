@@ -215,6 +215,12 @@ var Today = (function () {
       setTimeout(function () {
         scrim.remove();
         sheet.remove();
+        // Play deferred sync moment now that the sheet is closed.
+        if (pendingSync) {
+          var ps = pendingSync;
+          pendingSync = null;
+          maybeSyncMoment(ps.dateStr, ps.me, ps.partner);
+        }
       }, 240);
     }
     scrim.addEventListener("click", close);
@@ -384,6 +390,11 @@ var Today = (function () {
     if (dateStr !== localDate() || !partner) return;
     if (!Pod.inSync(dateStr, me, partner)) return;
     if (localStorage.getItem(syncFlagKey(dateStr))) return;
+    // Defer if a sheet is open (e.g. steps sheet after Goal tap).
+    if (document.querySelector(".sheet.show")) {
+      pendingSync = { dateStr: dateStr, me: me, partner: partner };
+      return;
+    }
     try { localStorage.setItem(syncFlagKey(dateStr), "1"); } catch (e) {}
     playSyncMoment(me, partner);
   }
@@ -973,6 +984,7 @@ var Today = (function () {
   }
 
   var renderToken = 0;
+  var pendingSync = null; // Deferred sync moment args when a sheet is open
 
   function render() {
     var root = document.getElementById("today-root");
@@ -1028,7 +1040,7 @@ var Today = (function () {
       togetherHTML(dateStr, me, partner) +
       habitsHeadHTML(partner) +
       '<div class="tile-grid"' + enterCls(4) + enterDelay(4) + ">" + tilesHTML(habitList, dateStr, me, partner) + "</div>" +
-      '<button class="add-habit glass js-add-habit"' + enterCls(5) + enterDelay(5) + ' aria-label="Add a habit">' +
+      '<button class="add-habit js-add-habit"' + enterCls(5) + enterDelay(5) + ' aria-label="Add a habit">' +
       ICONS.plus + "<span>Add Habit</span></button>";
 
     root.querySelectorAll(".dnav").forEach(function (b) {
