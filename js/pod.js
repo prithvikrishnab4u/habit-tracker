@@ -78,22 +78,19 @@ var Pod = (function () {
 
   // Per-habit streak: consecutive days (daily habits) or weeks (weekly
   // habits) where neither member missed the habit.
-  function habitStreak(habit, me, partner) {
+  function personStreak(habit, personId) {
     var today = localDate();
     if (habit.period === "week") {
       var weeks = 0;
       var monday = mondayOf(today);
       for (var w = 0; w < 12; w++) {
-        var start = addDays(monday, -w * 7);
-        if (weekMet(habit, start, me) && weekMet(habit, start, partner)) weeks++;
+        if (weekMet(habit, addDays(monday, -w * 7), personId)) weeks++;
         else break;
       }
       return { n: weeks, unit: "w" };
     }
     function dayOk(d) {
-      var a = Today.habitMet(habit, me, Data.getCached(d, me) || {});
-      var b = Today.habitMet(habit, partner, Data.getCached(d, partner) || {});
-      return a !== false && b !== false;
+      return Today.habitMet(habit, personId, Data.getCached(d, personId) || {}) !== false;
     }
     var n = 0;
     for (var back = dayOk(today) ? 0 : -1; back > -DAYS * 2; back--) {
@@ -132,6 +129,7 @@ var Pod = (function () {
   function render() {
     root = document.getElementById("pod-root");
     if (!root || !Store.get("habits")) return;
+    if (window.Today && typeof Today.paintInkVars === "function") Today.paintInkVars();
     var me = Store.get("person");
     var partner = Store.partnerId();
     var today = localDate();
@@ -203,18 +201,20 @@ var Pod = (function () {
       // ----- streak cards -----
       var habits = Store.get("habits").habits;
       var cards = habits.map(function (h) {
-        var s = habitStreak(h, me, partner);
+        var a = personStreak(h, me);
+        var b = personStreak(h, partner);
         var tint = tintFor(h);
-        var fill = s.unit === "w"
-          ? Math.min(1, s.n / 8)
-          : Math.min(1, s.n / 30);
-        return '<div class="streak-card glass" style="--tint:' + tint + '">' +
+        var mx = Math.max(a.n, b.n, 1);
+        function row(pid, s) {
+          return '<div class="sc-person">' +
+            avatarHTML(pid, 22) +
+            '<span class="sc-bar" aria-hidden="true"><span style="width:' + Math.round(s.n / mx * 100) + '%"></span></span>' +
+            '<span class="sc-val num">' + s.n + s.unit + "</span>" +
+            "</div>";
+        }
+        return '<div class="streak-card glass" data-habit="' + esc(h.id) + '" style="--tint:' + tint + '">' +
           '<p class="sc-name">' + esc(h.name) + "</p>" +
-          '<div class="sc-row">' +
-          '<span class="sc-avatars">' + avatarHTML(me, 26) + avatarHTML(partner, 26) + "</span>" +
-          '<span class="sc-val num">' + s.n + s.unit + "</span>" +
-          "</div>" +
-          '<div class="sc-bar" aria-hidden="true"><span style="width:' + Math.round(fill * 100) + "%;background:" + tint + '"></span></div>' +
+          row(me, a) + row(partner, b) +
           "</div>";
       }).join("");
 
@@ -222,27 +222,27 @@ var Pod = (function () {
         '<div class="sync-head"><h1>Sync</h1>' +
         '<p class="sync-sub">' + esc(monthName) + "</p></div>" +
         '<div class="sync-hero glass">' +
-        '<div class="sync-hero-glow" aria-hidden="true"></div>' +
+        '<div class="sync-hero-glow" aria-hidden="true" style="background:linear-gradient(135deg,' + youC + "," + SYNC_PURPLE + " 40%," + pC + ')"></div>' +
         '<div class="sync-hero-main">' +
-        '<p class="hero-label">Days in sync</p>' +
-        '<p class="hero-num num">' + syncedDays + "</p>" +
-        '<p class="hero-sub">of ' + elapsed + " days this month</p>" +
-        "</div>" +
+        '<div><p class="hero-label">Days in sync</p>' +
+        '<p class="hero-num num" style="background:linear-gradient(135deg,var(--ink) 30%,' + SYNC_PURPLE + " 70%," + pC + ' 100%);-webkit-background-clip:text;background-clip:text">' + syncedDays + "</p>" +
+        '<p class="hero-sub">of ' + elapsed + " days this month</p></div>" +
         '<div class="sync-hero-chips">' +
         '<span class="hero-chip">' + esc(streakChip) + "</span>" +
         '<span class="hero-chip">Best this month ' + best + "</span>" +
         "</div>" +
         "</div>" +
-        '<div class="cal-card glass" role="group" aria-label="' + esc(monthName) + ' calendar">' +
-        '<div class="cal-dow" aria-hidden="true">' +
-        ["M", "T", "W", "T", "F", "S", "S"].map(function (l) { return "<span>" + l + "</span>"; }).join("") +
         "</div>" +
-        '<div class="cal-grid">' + cells + "</div>" +
+        '<div class="cal-card glass" role="group" aria-label="' + esc(monthName) + ' calendar">' +
+        '<div class="cal-top"><span class="cal-title">Every day</span>' +
         '<div class="cal-legend">' +
         '<span class="leg"><i class="leg-dot" style="background:linear-gradient(135deg,' + youC + " 0%," + SYNC_PURPLE + " 55%," + pC + ' 100%)"></i>Both</span>' +
         '<span class="leg"><i class="leg-dot" style="background:' + youC + '"></i>You</span>' +
         '<span class="leg"><i class="leg-dot" style="background:' + pC + '"></i>' + esc(Store.personName(partner)) + "</span>" +
-        "</div>" +
+        "</div></div>" +
+        '<div class="cal-grid">' +
+        ["M", "T", "W", "T", "F", "S", "S"].map(function (l) { return '<span class="dow" aria-hidden="true">' + l + "</span>"; }).join("") +
+        cells + "</div>" +
         "</div>" +
         '<div class="streaks-sec"><h2>Streaks</h2>' +
         '<div class="streak-cards">' + cards + "</div></div>";
