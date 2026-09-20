@@ -974,6 +974,21 @@ body {
 .habits-title { font-size: 22px; line-height: 28px; font-weight: 700; letter-spacing: -0.02em; margin: 0; }
 .habits-corner { font-size: 13px; color: var(--ink-60); }
 
+/* Loading skeleton (Today paints only after check-ins fetch) */
+.skel { border-radius: 18px; background: var(--glass); border: var(--hairline); position: relative; overflow: hidden; }
+.skel::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(100deg, transparent 20%, rgba(255, 255, 255, 0.09) 50%, transparent 80%);
+  animation: skelShimmer 1.4s linear infinite;
+}
+@keyframes skelShimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+@media (prefers-reduced-motion: reduce) { .skel::after { animation: none; } }
+.skel-head { height: 66px; margin: 6px 2px 12px; border-radius: 20px; }
+.skel-card { height: 148px; margin-bottom: 14px; border-radius: 24px; }
+.skel-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.skel-tile { height: 150px; border-radius: 30px; }
+.skel-tile.skel-tall { grid-row: span 2; height: 312px; }
+
 /* Tile grid */
 .tile-grid { display: grid; grid-template-columns: 1fr 1fr; grid-template-areas: "water exercise" "water steps"; gap: 12px; grid-auto-rows: 172px; }
 .tile { position: relative; border-radius: 30px; overflow: hidden; border: 0.5px solid var(--hairline); padding: 16px; display: flex; flex-direction: column; text-align: left; color: var(--ink); font-family: var(--font-text); cursor: pointer; background: linear-gradient(160deg, color-mix(in srgb, var(--tint) 16%, transparent), color-mix(in srgb, var(--tint) 2%, transparent) 60%), linear-gradient(135deg, var(--glass-hi), var(--glass-lo) 45%, var(--glass-hi)); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), var(--shadow); backdrop-filter: blur(30px) saturate(180%); -webkit-backdrop-filter: blur(30px) saturate(180%); transition: transform 320ms var(--spring); touch-action: pan-y; user-select: none; -webkit-user-select: none; }
