@@ -1171,6 +1171,7 @@ button.habit-row.habit-add { cursor: pointer; border-top: 0.5px solid var(--hair
 }
 .habit-add-icon svg { width: 16px; height: 16px; }
 .signout-card { border-radius: 26px; overflow: hidden; }
+.build-foot { text-align: center; font-size: 11px; color: var(--ink-3); padding: 16px 0 8px; font-family: var(--font-text); }
 .signout-btn {
   width: 100%;
   padding: 15px 16px;
