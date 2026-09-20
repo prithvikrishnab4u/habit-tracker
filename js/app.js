@@ -94,11 +94,13 @@
     scr.classList.remove("hidden");
     scr.innerHTML =
       '<div class="onb">' +
+      '<div class="onb-bg" aria-hidden="true"><i class="ob1"></i><i class="ob2"></i><i class="ob3"></i></div>' +
+      '<div class="onb-screen onb-center">' +
       "<h1>Couldn't connect</h1>" +
       '<p class="lede">Habit Tracker could not reach GitHub. Check your connection and try again. Your setup is saved on this device.</p>' +
       '<button class="btn" id="le-retry">Retry</button>' +
       '<button class="btn btn-ghost" id="le-token">Use a different token</button>' +
-      "</div>";
+      "</div></div>";
     document.getElementById("le-retry").addEventListener("click", function () {
       scr.innerHTML = "";
       tryLoad();
