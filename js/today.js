@@ -789,6 +789,184 @@ var Today = (function () {
     tileEl.setAttribute("aria-label", esc(habit.name) + ": " + displayVal + " of " + target + ". Tap to add one.");
   }
 
+  /* ----- Meals (v2 Phase B): log what/when/tags, day signal line ----- */
+  var MEAL_TAGS = ["veg", "protein", "grain", "fruit", "fried", "sweet", "drink"];
+  var MEAL_TAG_LABELS = { veg: "Veg", protein: "Protein", grain: "Grain", fruit: "Fruit", fried: "Fried", sweet: "Sweet", drink: "Drink" };
+
+  // Get meals array for a person/date from cached entries
+  function getMeals(dateStr, personId) {
+    var entries = Data.getCached(dateStr, personId) || {};
+    return entries.meals || [];
+  }
+
+  // Compute the day signal from meals. Returns { line, dot, lateDinner }.
+  // Dot: green (veg/fruit in >=2 AND fried/sweet <=1), amber (one missed), grey (<2 meals).
+  function mealSignal(meals) {
+    var n = meals.length;
+    if (n < 2) return { line: n === 0 ? "No meals logged" : "1 meal logged", dot: "grey", lateDinner: false };
+    var vegFruit = 0, friedSweet = 0;
+    var friedCount = 0, sweetCount = 0;
+    meals.forEach(function (m) {
+      var tags = m.tags || [];
+      var hasVegFruit = tags.indexOf("veg") >= 0 || tags.indexOf("fruit") >= 0;
+      if (hasVegFruit) vegFruit++;
+      if (tags.indexOf("fried") >= 0) { friedSweet++; friedCount++; }
+      if (tags.indexOf("sweet") >= 0) { friedSweet++; sweetCount++; }
+    });
+    var green = (vegFruit >= 2) && (friedSweet <= 1);
+    var dot = green ? "green" : "amber";
+    var parts = [n + " meals", "veg in " + vegFruit];
+    if (friedCount > 0 || sweetCount > 0) {
+      var indulgences = [];
+      if (friedCount > 0) indulgences.push(friedCount + " fried");
+      if (sweetCount > 0) indulgences.push(sweetCount + " sweet");
+      parts.push(indulgences.join(", "));
+    }
+    // Late dinner: last meal after 9pm
+    var lateDinner = false;
+    if (meals.length > 0) {
+      var last = meals[meals.length - 1];
+      if (last.t) {
+        var parts_t = last.t.split(":");
+        var hour = parseInt(parts_t[0], 10);
+        if (hour >= 21) lateDinner = true;
+      }
+    }
+    return { line: parts.join(" · "), dot: dot, lateDinner: lateDinner };
+  }
+
+  // Get last 8 unique meal names across all cached dates for the person
+  function getRecentMeals(personId) {
+    var seen = {}, recents = [];
+    // Check last 30 days
+    var today = localDate();
+    for (var i = 0; i < 30 && recents.length < 8; i++) {
+      var d = addDays(today, -i);
+      var meals = getMeals(d, personId);
+      meals.forEach(function (m) {
+        if (m.what && !seen[m.what] && recents.length < 8) {
+          seen[m.what] = true;
+          recents.push({ what: m.what, tags: m.tags || [] });
+        }
+      });
+    }
+    return recents;
+  }
+
+  function mealsTile(dateStr, me, partner) {
+    var meals = getMeals(dateStr, me);
+    var sig = mealSignal(meals);
+    var dotClass = "meal-dot-" + sig.dot;
+    var line = sig.line + (sig.lateDinner ? " · late dinner" : "");
+    return '<button class="tile tile-meals" data-habit="meals" aria-label="Meals. ' + esc(line) + '. Tap to log a meal.">' +
+      '<span class="t-top"><span class="t-label">Meals</span>' +
+      '<span class="meal-dot ' + dotClass + '" aria-hidden="true"></span></span>' +
+      '<span class="t-cap meal-signal">' + esc(line) + "</span>" +
+      '<span class="t-cap meal-caption">based on what you tagged</span>' +
+      "</button>";
+  }
+
+  // v2 Phase B: Meal logging sheet
+  function openMealSheet(dateStr, me) {
+    var now = new Date();
+    var timeStr = ("0" + now.getHours()).slice(-2) + ":" + ("0" + now.getMinutes()).slice(-2);
+    var recents = getRecentMeals(me);
+    var selectedTags = [];
+    var selectedWhat = "";
+    var selectedTime = timeStr;
+
+    var chipsHTML = recents.map(function (r) {
+      return '<button class="meal-chip" data-what="' + esc(r.what) + '" data-tags="' + esc(r.tags.join(",")) + '">' + esc(r.what) + "</button>";
+    }).join("");
+
+    var tagsHTML = MEAL_TAGS.map(function (t) {
+      return '<button class="meal-tag" data-tag="' + t + '" aria-pressed="false">' + MEAL_TAG_LABELS[t] + "</button>";
+    }).join("");
+
+    var body = '<div class="meal-form">' +
+      '<label class="meal-label">When</label>' +
+      '<button class="meal-time" id="meal-time-btn">' + timeStr + ' <span aria-hidden="true">▾</span></button>' +
+      '<label class="meal-label">What</label>' +
+      '<input class="meal-what" id="meal-what-input" type="text" placeholder="What did you eat?" autocomplete="off">' +
+      (chipsHTML ? '<div class="meal-chips">' + chipsHTML + "</div>" : "") +
+      '<label class="meal-label">What was in it</label>' +
+      '<div class="meal-tags">' + tagsHTML + "</div>" +
+      '<button class="btn meal-save" id="meal-save-btn">Log meal</button>' +
+      "</div>";
+
+    var sheet = openSheet("Log a meal", null, body);
+
+    // Time button: simple prompt for now (wheel picker is future work)
+    var timeBtn = document.getElementById("meal-time-btn");
+    var whatInput = document.getElementById("meal-what-input");
+    if (timeBtn) timeBtn.addEventListener("click", function () {
+      var t = prompt("Time (HH:MM):", selectedTime);
+      if (t && /^\d{1,2}:\d{2}$/.test(t)) {
+        selectedTime = t;
+        timeBtn.innerHTML = esc(t) + ' <span aria-hidden="true">▾</span>';
+      }
+    });
+
+    // Recent chips fill the form
+    document.querySelectorAll(".meal-chip").forEach(function (chip) {
+      chip.addEventListener("click", function () {
+        selectedWhat = chip.getAttribute("data-what");
+        whatInput.value = selectedWhat;
+        var tags = (chip.getAttribute("data-tags") || "").split(",").filter(Boolean);
+        selectedTags = tags;
+        document.querySelectorAll(".meal-tag").forEach(function (tagBtn) {
+          var on = tags.indexOf(tagBtn.getAttribute("data-tag")) >= 0;
+          tagBtn.setAttribute("aria-pressed", on ? "true" : "false");
+          tagBtn.classList.toggle("on", on);
+        });
+      });
+    });
+
+    // Tag multi-select
+    document.querySelectorAll(".meal-tag").forEach(function (tagBtn) {
+      tagBtn.addEventListener("click", function () {
+        var tag = tagBtn.getAttribute("data-tag");
+        var idx = selectedTags.indexOf(tag);
+        if (idx >= 0) selectedTags.splice(idx, 1);
+        else selectedTags.push(tag);
+        var on = selectedTags.indexOf(tag) >= 0;
+        tagBtn.setAttribute("aria-pressed", on ? "true" : "false");
+        tagBtn.classList.toggle("on", on);
+      });
+    });
+
+    // Save
+    var saveBtn = document.getElementById("meal-save-btn");
+    if (saveBtn) saveBtn.addEventListener("click", function () {
+      var what = whatInput.value.trim() || selectedWhat;
+      if (!what) {
+        showToast("Add what you ate.");
+        return;
+      }
+      var meals = getMeals(dateStr, me).slice();
+      var prevMeals = getMeals(dateStr, me).slice();
+      meals.push({ t: selectedTime, what: what, tags: selectedTags.slice() });
+      // Sort by time
+      meals.sort(function (a, b) { return (a.t || "").localeCompare(b.t || ""); });
+      Data.saveEntry(dateStr, me, "meals", meals, prevMeals, {
+        pending: function (on) {},
+        done: function () {
+          sheet.close();
+          // Repaint the meals tile
+          var tile = document.querySelector('.tile[data-habit="meals"]');
+          if (tile) {
+            var sig = mealSignal(meals);
+            var line = sig.line + (sig.lateDinner ? " · late dinner" : "");
+            tile.querySelector(".meal-signal").textContent = line;
+            tile.querySelector(".meal-dot").className = "meal-dot meal-dot-" + sig.dot;
+            tile.setAttribute("aria-label", "Meals. " + line + ". Tap to log a meal.");
+          }
+          showToast("Meal logged.");
+        }
+      });
+    });
+  }
+
   function tilesHTML(habits, dateStr, me, partner) {
     var order = ["water", "exercise", "steps"];
     var visible = habits.filter(function (h) { return !h.archived; });
@@ -797,7 +975,7 @@ var Today = (function () {
       return (ai < 0 ? 99 : ai) - (bi < 0 ? 99 : bi);
     });
     var extraIdx = 0;
-    return sorted.map(function (h) {
+    var tiles = sorted.map(function (h) {
       if (h.id === "water") return waterTile(h, dateStr, me, partner);
       if (h.id === "exercise") return exerciseTile(h, dateStr, me, partner);
       if (h.id === "steps") return stepsTile(h, dateStr, me, partner);
@@ -805,6 +983,9 @@ var Today = (function () {
       extraIdx++;
       return genericTile(h, dateStr, me, partner, tint);
     }).join("");
+    // v2 Phase B: Meals tile appended after habit tiles
+    tiles += mealsTile(dateStr, me, partner);
+    return tiles;
   }
 
   /* ----- exact water sheet (existing behavior, new tile hookup) ----- */
@@ -1188,6 +1369,12 @@ var Today = (function () {
     root.querySelectorAll(".tile").forEach(function (el) {
       var habit = habitList.filter(function (h) { return h.id === el.dataset.habit; })[0];
       if (habit) bindTile(el, habit);
+    });
+
+    // v2 Phase B: Meals tile opens the meal logging sheet
+    var mealsTileEl = root.querySelector('.tile[data-habit="meals"]');
+    if (mealsTileEl) mealsTileEl.addEventListener("click", function () {
+      openMealSheet(dateStr, me);
     });
 
     var nudgeBtn = document.getElementById("nudge-btn");
