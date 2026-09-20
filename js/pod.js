@@ -1,11 +1,16 @@
-/* Pod screen (Phase 3).
-   Days-in-sync hero, 30-day split grid, per-habit streaks,
-   and the v1 sync banner. */
+/* Sync screen (Phase 4).
+   Days-in-sync hero, calendar month, per-habit streak cards.
+   The Nudge and the "In sync today" moment live on Today, not here. */
 
 var Pod = (function () {
   var root = null;
-  var DAYS = 30;
-  var SYNC_GREEN = "#30D158";
+  var DAYS = 30; // read window for streak math
+  var SYNC_PURPLE = "#BF5AF2";
+  var TINTS = { water: "#0A84FF", exercise: "#BF5AF2", steps: "#30D158" };
+
+  function tintFor(habit) {
+    return TINTS[habit.id] || "#A259FF";
+  }
 
   function evaluatedHabits() {
     return Store.get("habits").habits.filter(function (h) {
@@ -48,54 +53,80 @@ var Pod = (function () {
     return best;
   }
 
-  // Per-habit streak: consecutive days where neither member missed the habit.
+  // Synced days in the current month so far (days 1 through today).
+  function monthSynced(me, partner) {
+    var t = new Date();
+    var y = t.getFullYear(), m = t.getMonth();
+    var n = 0;
+    for (var d = 1; d <= t.getDate(); d++) {
+      if (inSync(monthDayStr(y, m, d), me, partner)) n++;
+    }
+    return n;
+  }
+
+  function monthDayStr(y, m, day) {
+    return y + "-" + String(m + 1).padStart(2, "0") + "-" + String(day).padStart(2, "0");
+  }
+
+  function mondayOf(dateStr) {
+    var parts = dateStr.split("-").map(Number);
+    var d = new Date(parts[0], parts[1] - 1, parts[2]);
+    var dow = (d.getDay() + 6) % 7; // Monday = 0
+    d.setDate(d.getDate() - dow);
+    return localDate(d);
+  }
+
+  // Per-habit streak: consecutive days (daily habits) or weeks (weekly
+  // habits) where neither member missed the habit.
   function habitStreak(habit, me, partner) {
     var today = localDate();
+    if (habit.period === "week") {
+      var weeks = 0;
+      var monday = mondayOf(today);
+      for (var w = 0; w < 12; w++) {
+        var start = addDays(monday, -w * 7);
+        if (weekMet(habit, start, me) && weekMet(habit, start, partner)) weeks++;
+        else break;
+      }
+      return { n: weeks, unit: "w" };
+    }
     function dayOk(d) {
       var a = Today.habitMet(habit, me, Data.getCached(d, me) || {});
       var b = Today.habitMet(habit, partner, Data.getCached(d, partner) || {});
       return a !== false && b !== false;
     }
-    var start = dayOk(today) ? 0 : -1;
     var n = 0;
-    for (var back = start; back > -DAYS * 2; back--) {
+    for (var back = dayOk(today) ? 0 : -1; back > -DAYS * 2; back--) {
       if (dayOk(addDays(today, back))) n++;
       else break;
     }
-    return n;
+    return { n: n, unit: "d" };
   }
 
-  function cellStyle(dateStr, me, partner) {
-    var sync = inSync(dateStr, me, partner);
-    if (sync) {
-      return "background: linear-gradient(135deg, " + SYNC_GREEN + " 0%, #1F9D44 100%);";
+  function weekMet(habit, mondayStr, personId) {
+    var n = 0;
+    for (var i = 0; i < 7; i++) {
+      if (Data.value(addDays(mondayStr, i), personId, habit.id)) n++;
     }
-    var myFrac = Today.dayFraction(dateStr, me);
-    var pFrac = Today.dayFraction(dateStr, partner);
-    function dim(hex, frac) {
-      var a = 0.18 + 0.62 * frac;
-      return hex + Math.round(a * 255).toString(16).padStart(2, "0");
-    }
-    return "background: linear-gradient(135deg, " +
-      dim(Store.personColor(me), myFrac) + " 0%, " +
-      dim(Store.personColor(me), myFrac) + " 50%, " +
-      dim(Store.personColor(partner), pFrac) + " 50%, " +
-      dim(Store.personColor(partner), pFrac) + " 100%);";
+    return n >= habit.targets[personId];
   }
 
-  function showSyncBanner() {
-    var b = document.getElementById("sync-banner");
-    if (!b) {
-      b = document.createElement("div");
-      b.id = "sync-banner";
-      b.setAttribute("role", "status");
-      document.body.appendChild(b);
-    }
-    b.textContent = "In sync today. Nice.";
-    requestAnimationFrame(function () {
-      requestAnimationFrame(function () { b.classList.add("show"); });
-    });
-    setTimeout(function () { b.classList.remove("show"); }, 3000);
+  function avatarHTML(personId, px) {
+    var name = Store.personName(personId) || "?";
+    var color = Store.personColor(personId);
+    return '<span class="avatar" style="width:' + px + "px;height:" + px + "px;background:" + color +
+      ";font-size:" + Math.round(px * 0.45) + 'px" aria-hidden="true">' +
+      esc(name.charAt(0).toUpperCase()) + "</span>";
+  }
+
+  function calCell(day, state, opts) {
+    var cls = "cal-cell cal-" + state;
+    var style = opts.style || "";
+    var label = opts.label || String(day);
+    return '<div class="' + cls + (opts.today ? " cal-today" : "") + '"' +
+      (style ? ' style="' + style + '"' : "") +
+      ' role="img" aria-label="' + esc(label) + '">' +
+      '<span class="cal-day num">' + day + "</span></div>";
   }
 
   function render() {
@@ -115,40 +146,108 @@ var Pod = (function () {
     Promise.all(fetches).then(function () {
       var streak = currentStreak(me, partner);
       var best = bestStreak(me, partner);
-      var todaySync = inSync(today, me, partner);
+      var monthName = new Date().toLocaleString("en-US", { month: "long" });
+      var t = new Date();
+      var syncedDays = monthSynced(me, partner);
+      var elapsed = t.getDate();
+      var youC = Store.personColor(me);
+      var pC = Store.personColor(partner);
 
+      var streakChip = streak > 0
+        ? streak + "-day streak"
+        : "No streak yet";
+
+      // ----- calendar month -----
+      var y = t.getFullYear(), m = t.getMonth();
+      var daysInMonth = new Date(y, m + 1, 0).getDate();
+      var leadBlanks = (new Date(y, m, 1).getDay() + 6) % 7; // Monday first
       var cells = "";
-      for (var b = DAYS - 1; b >= 0; b--) {
-        var d = addDays(today, -b);
-        var dayNum = parseInt(d.split("-")[2], 10);
-        var label = b === 0 ? "Today" : b === 1 ? "Yesterday" : d;
-        cells += '<div class="sync-cell" style="' + cellStyle(d, me, partner) + '"' +
-          ' role="img" aria-label="' + label + (inSync(d, me, partner) ? ", in sync" : "") + '">' +
-          '<span class="cell-day">' + dayNum + "</span></div>";
+      for (var i = 0; i < leadBlanks; i++) cells += '<div class="cal-cell cal-blank"></div>';
+      for (var day = 1; day <= daysInMonth; day++) {
+        var ds = monthDayStr(y, m, day);
+        var isToday = day === t.getDate();
+        var aria = monthName + " " + day + (isToday ? ", today" : "");
+        if (day > t.getDate()) {
+          cells += calCell(day, "future", { today: isToday, label: aria });
+          continue;
+        }
+        var sync = inSync(ds, me, partner);
+        if (sync) {
+          cells += calCell(day, "both", {
+            today: isToday, label: aria + ", in sync",
+            style: "background:linear-gradient(135deg," + youC + " 0%," + SYNC_PURPLE + " 55%," + pC + " 100%);"
+          });
+          continue;
+        }
+        var myFrac = Today.dayFraction(ds, me);
+        var pFrac = Today.dayFraction(ds, partner);
+        if (myFrac >= 1) {
+          cells += calCell(day, "me", {
+            today: isToday, label: aria + ", you only",
+            style: "background:linear-gradient(135deg," + youC + " 0%," + youC + " 50%,var(--cal-faint) 50%,var(--cal-faint) 100%);"
+          });
+        } else if (pFrac >= 1) {
+          cells += calCell(day, "partner", {
+            today: isToday, label: aria + ", " + Store.personName(partner) + " only",
+            style: "background:linear-gradient(135deg,var(--cal-faint) 0%,var(--cal-faint) 50%," + pC + " 50%," + pC + " 100%);"
+          });
+        } else {
+          cells += calCell(day, "none", { today: isToday, label: aria });
+        }
+      }
+      var total = leadBlanks + daysInMonth;
+      for (var trail = 0; trail < (7 - (total % 7)) % 7; trail++) {
+        cells += '<div class="cal-cell cal-blank"></div>';
       }
 
-      var habits = evaluatedHabits();
-      var streakRows = habits.map(function (h) {
-        return '<div class="streak-row"><span>' + esc(h.name) + "</span>" +
-          '<span class="sval num">' + habitStreak(h, me, partner) + " days</span></div>";
+      // ----- streak cards -----
+      var habits = Store.get("habits").habits;
+      var cards = habits.map(function (h) {
+        var s = habitStreak(h, me, partner);
+        var tint = tintFor(h);
+        var fill = s.unit === "w"
+          ? Math.min(1, s.n / 8)
+          : Math.min(1, s.n / 30);
+        return '<div class="streak-card glass" style="--tint:' + tint + '">' +
+          '<p class="sc-name">' + esc(h.name) + "</p>" +
+          '<div class="sc-row">' +
+          '<span class="sc-avatars">' + avatarHTML(me, 26) + avatarHTML(partner, 26) + "</span>" +
+          '<span class="sc-val num">' + s.n + s.unit + "</span>" +
+          "</div>" +
+          '<div class="sc-bar" aria-hidden="true"><span style="width:' + Math.round(fill * 100) + "%;background:" + tint + '"></span></div>' +
+          "</div>";
       }).join("");
 
       root.innerHTML =
-        '<div class="pod-header"><h1>Pod</h1></div>' +
+        '<div class="sync-head"><h1>Sync</h1>' +
+        '<p class="sync-sub">' + esc(monthName) + "</p></div>" +
         '<div class="sync-hero glass">' +
-        '<div class="hero-num num">' + streak + "</div>" +
-        '<div class="hero-label">Days in sync</div>' +
-        '<p class="hero-sub">' + (streak > 0
-          ? "Current run. Best in 30 days: " + best + "."
-          : "No run going. Today is a fresh start.") + "</p>" +
+        '<div class="sync-hero-glow" aria-hidden="true"></div>' +
+        '<div class="sync-hero-main">' +
+        '<p class="hero-label">Days in sync</p>' +
+        '<p class="hero-num num">' + syncedDays + "</p>" +
+        '<p class="hero-sub">of ' + elapsed + " days this month</p>" +
         "</div>" +
-        '<div class="sync-grid glass" role="group" aria-label="Last 30 days">' + cells + "</div>" +
-        '<div class="streaks glass"><h2>Streaks</h2>' +
-        '<p class="sec-label">Per habit, both of you</p>' + streakRows + "</div>";
-
-      if (todaySync) showSyncBanner();
+        '<div class="sync-hero-chips">' +
+        '<span class="hero-chip">' + esc(streakChip) + "</span>" +
+        '<span class="hero-chip">Best ' + best + "</span>" +
+        "</div>" +
+        "</div>" +
+        '<div class="cal-card glass" role="group" aria-label="' + esc(monthName) + ' calendar">' +
+        '<div class="cal-dow" aria-hidden="true">' +
+        ["M", "T", "W", "T", "F", "S", "S"].map(function (l) { return "<span>" + l + "</span>"; }).join("") +
+        "</div>" +
+        '<div class="cal-grid">' + cells + "</div>" +
+        '<div class="cal-legend">' +
+        '<span class="leg"><i class="leg-dot" style="background:linear-gradient(135deg,' + youC + " 0%," + SYNC_PURPLE + " 55%," + pC + ' 100%)"></i>Both</span>' +
+        '<span class="leg"><i class="leg-dot" style="background:' + youC + '"></i>You</span>' +
+        '<span class="leg"><i class="leg-dot" style="background:' + pC + '"></i>' + esc(Store.personName(partner)) + "</span>" +
+        "</div>" +
+        "</div>" +
+        '<div class="streaks-sec"><h2>Streaks</h2>' +
+        '<div class="streak-cards">' + cards + "</div></div>";
     }).catch(function () {
-      root.innerHTML = '<div class="load-error"><p>Couldn\'t load the pod view. Check your connection.</p>' +
+      root.innerHTML = '<div class="load-error"><p>Couldn\'t load the Sync view. Check your connection.</p>' +
         '<button class="btn" id="pod-retry">Retry</button></div>';
       document.getElementById("pod-retry").addEventListener("click", render);
     });

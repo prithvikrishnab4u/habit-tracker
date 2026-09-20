@@ -1,19 +1,34 @@
-/* Manage screen (Phase 4).
-   Habit list, add-habit sheet, sign out. No delete in v1. */
+/* Manage screen (Phase 6: Habits).
+   iOS-Settings-style grouped list. Add-habit sheet and sign-out
+   behavior unchanged. No delete in v1. */
 
 var Manage = (function () {
   var root = null;
   var UNITS = ["glasses", "steps", "workouts", "minutes", "times"];
+  var TINTS = { water: "#0A84FF", exercise: "#BF5AF2", steps: "#30D158" };
 
-  function habitItem(h) {
+  function tintFor(h) {
+    return TINTS[h.id] || "#A259FF";
+  }
+
+  // "8 glasses a day", "1 time a week".
+  function detailFor(h) {
     var me = Store.get("person");
     var target = h.targets[me];
-    var period = h.period === "week" ? "Weekly" : "Daily";
-    var sync = h.syncEligible ? " &middot; counts toward sync" : "";
-    return '<div class="habit-item glass">' +
-      "<div><p class=\"hname\">" + esc(h.name) + "</p>" +
-      '<p class="hmeta">' + period + " &middot; " + esc(h.unit || "") + sync + "</p></div>" +
-      '<span class="htarget num">' + esc(String(target)) + "</span></div>";
+    var unit = h.unit || "times";
+    if (target === 1 && /s$/.test(unit)) unit = unit.slice(0, -1);
+    var per = h.period === "week" ? "a week" : "a day";
+    return target + " " + unit + " " + per;
+  }
+
+  function habitRow(h) {
+    var tint = tintFor(h);
+    return '<div class="habit-row" style="--tint:' + tint + '">' +
+      '<span class="habit-icon" style="background:linear-gradient(135deg,' + tint + " 0%,color-mix(in srgb," + tint + ' 62%,#000) 100%)" aria-hidden="true">' +
+      esc(h.name.charAt(0).toUpperCase()) + "</span>" +
+      '<span class="habit-text"><span class="habit-name">' + esc(h.name) + "</span>" +
+      '<span class="habit-detail">' + esc(detailFor(h)) + "</span></span>" +
+      '<span class="habit-chev" aria-hidden="true">\u203A</span></div>';
   }
 
   function addSheet() {
@@ -186,10 +201,18 @@ var Manage = (function () {
     if (!root || !Store.get("habits")) return;
     var habits = Store.get("habits").habits;
     root.innerHTML =
-      '<div class="manage-header"><h1>Habits</h1>' +
-      '<button class="add-btn" id="add-habit" aria-label="Add habit">+</button></div>' +
-      habits.map(habitItem).join("") +
-      '<div class="signout-wrap"><button class="btn btn-danger" id="signout-btn">Sign out of this device</button></div>';
+      '<div class="sync-head"><h1>Habits</h1>' +
+      '<p class="sync-sub">' + habits.length + " habits, shared</p></div>" +
+      '<div class="habit-card glass">' +
+      habits.map(habitRow).join("") +
+      '<button class="habit-row habit-add" id="add-habit">' +
+      '<span class="habit-icon habit-add-icon" aria-hidden="true">+</span>' +
+      '<span class="habit-text"><span class="habit-name">Add Habit</span></span>' +
+      '<span class="habit-chev" aria-hidden="true">\u203A</span></button>' +
+      "</div>" +
+      '<div class="signout-card glass">' +
+      '<button class="signout-btn" id="signout-btn">Sign Out of This Device</button>' +
+      "</div>";
 
     document.getElementById("add-habit").addEventListener("click", addSheet);
     document.getElementById("signout-btn").addEventListener("click", signOut);
