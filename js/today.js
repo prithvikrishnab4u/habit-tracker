@@ -176,7 +176,7 @@ var Today = (function () {
   }
 
   /* ----- save pipeline: optimistic UI + pending dot + undo/retry ----- */
-  function commit(dateStr, personId, habitId, newVal, prevVal, apply, revert, tileEl) {
+  function commit(dateStr, personId, habitId, newVal, prevVal, apply, tileEl) {
     apply();
     var dot = document.createElement("span");
     dot.className = "pending-dot";
@@ -192,24 +192,25 @@ var Today = (function () {
         });
       },
       fail: function () {
+        // The cache was already re-synced from the file by saveEntry;
+        // just repaint. No rollback: it could sit below the file.
         dot.remove();
-        revert();
+        render();
         toastAction("Couldn't save.", "Retry", function () {
-          commit(dateStr, personId, habitId, newVal, prevVal, apply, revert, tileEl);
+          var cur = Data.value(dateStr, personId, habitId);
+          commit(dateStr, personId, habitId, newVal, cur, apply, tileEl);
         });
       }
     });
   }
 
-  // Wraps commit() for tile taps: paints the tile optimistically, reverts
-  // the paint if the write fails.
+  // Wraps commit() for tile taps: paints the tile optimistically.
   function logTile(habit, newVal, tileEl, paint, dateStr) {
     var me = Store.get("person");
     var d = dateStr || viewedDate();
     var prevVal = Data.value(d, me, habit.id);
     commit(d, me, habit.id, newVal, prevVal,
       function () { paint(newVal); },
-      function () { paint(prevVal); },
       tileEl);
   }
 

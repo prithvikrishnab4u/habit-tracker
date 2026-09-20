@@ -75,14 +75,18 @@ var Data = (function () {
       if (ui && ui.pending) ui.pending(false);
       if (ui && ui.ok) ui.ok();
     }).catch(function () {
-      // Roll back the optimistic change.
-      var rolled = Object.assign({}, cache[k].entries);
-      if (prevVal === undefined || prevVal === null) delete rolled[habitId];
-      else rolled[habitId] = prevVal;
-      cache[k] = { entries: rolled };
+      // Failed write: drop the optimistic undo entry, then invalidate and
+      // re-fetch instead of rolling back to prevVal. With queued rapid taps
+      // the file may already hold a newer value than prevVal, so a rollback
+      // would leave the cache below the file. The refresh goes through the
+      // per-file queue so it lands after any queued writes complete.
       undoStack.pop();
       if (ui && ui.pending) ui.pending(false);
-      if (ui && ui.fail) ui.fail();
+      refresh(dateStr, personId).then(function () {
+        if (ui && ui.fail) ui.fail();
+      }, function () {
+        if (ui && ui.fail) ui.fail();
+      });
     });
   }
 
@@ -110,6 +114,15 @@ var Data = (function () {
 
   function invalidate(dateStr, personId) { delete cache[key(dateStr, personId)]; }
 
+  // Drop the cached file and re-fetch it, ordered after any queued writes
+  // so the cache ends up matching the file on disk.
+  function refresh(dateStr, personId) {
+    return enqueue(path(dateStr, personId), function () {
+      delete cache[key(dateStr, personId)];
+      return fetchCheckin(dateStr, personId);
+    });
+  }
+
   function invalidateAll() {
     for (var k in cache) delete cache[k];
   }
@@ -122,6 +135,7 @@ var Data = (function () {
     undoLast: undoLast,
     peekUndo: peekUndo,
     invalidate: invalidate,
+    refresh: refresh,
     invalidateAll: invalidateAll
   };
 })();

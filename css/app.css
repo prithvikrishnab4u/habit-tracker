@@ -986,8 +986,7 @@ body {
 .deep-exercise { color: #BF5AF2; }
 .deep-steps { color: #30D158; }
 
-.t-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; color: var(--ink-60); background: rgba(127, 127, 140, 0.22); border: 0.5px solid var(--hairline); border-radius: 14px; padding: 4px 9px 4px 4px; white-space: nowrap; backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
-.t-chip-val { font-variant-numeric: tabular-nums; }
+.t-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; color: var(--ink-60); background: rgba(127, 127, 140, 0.22); border: 0.5px solid var(--hairline); border-radius: 14px; padding: 4px 9px 4px 4px; .t-chip { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; color: var(--ink-60); background: rgba(127, 127, 140, 0.22); border: 0.5px solid var(--hairline); border-radius: 14px; padding: 4px 9px 4px 4px; white-space: nowrap; } { font-variant-numeric: tabular-nums; }
 
 /* Water tile */
 .t-liquid { position: absolute; inset: 0; z-index: 0; }
