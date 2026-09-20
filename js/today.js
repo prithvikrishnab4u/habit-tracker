@@ -845,11 +845,23 @@ var Today = (function () {
 
     Promise.all(fetches).then(function () {
       paint(dateStr, me, partner, habitsDoc.habits);
-    }, function () {
-      // Fetch failed (offline or server error): paint from whatever is
-      // cached rather than leaving the skeleton up. The offline banner
-      // covers the offline case.
-      paint(dateStr, me, partner, habitsDoc.habits);
+    }, function (err) {
+      var status = err && err.status;
+      if (status === 401 || status === 403) {
+        // Bad/revoked token: reload so the boot path restarts onboarding.
+        window.location.reload();
+        return;
+      }
+      // Network or server failure: paint from cache when we have check-ins
+      // (the offline banner covers the offline case); otherwise show Retry
+      // instead of painting empty values.
+      if (Data.getCached(dateStr, me) !== null) {
+        paint(dateStr, me, partner, habitsDoc.habits);
+      } else {
+        root.innerHTML = '<div class="load-error"><p>Couldn\'t load today\'s check-ins. Check your connection.</p>' +
+          '<button class="btn" id="today-retry">Retry</button></div>';
+        document.getElementById("today-retry").addEventListener("click", render);
+      }
     });
   }
 
