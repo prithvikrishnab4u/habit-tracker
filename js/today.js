@@ -57,6 +57,8 @@ var Today = (function () {
     var v = entries ? entries[habit.id] : undefined;
     var target = habit.targets[personId];
     if (habit.syncRule === "if-logged" && (v === undefined || v === null)) return null; // excluded
+    // Inverted checks (Sugar-free) default to true (clean) when no value stored
+    if (v === undefined || v === null) v = habit.inverted ? 1 : 0;
     return (v || 0) >= target;
   }
 
@@ -79,6 +81,8 @@ var Today = (function () {
     var target = habit.targets[personId];
     if (habit.syncRule === "if-logged" && (v === undefined || v === null)) return null; // excluded
     if (!target) return null;
+    // Inverted checks (Sugar-free) default to true (clean) when no value stored
+    if (v === undefined || v === null) v = habit.inverted ? 1 : 0;
     return Math.min((v || 0) / target, 1);
   }
 
@@ -274,6 +278,7 @@ var Today = (function () {
     var partner = Store.partnerId();
     var vd = viewedDate();
     paintTogether(vd, personId, partner);
+    paintStrip(vd, personId, partner);
     maybeSyncMoment(vd, personId, partner);
   }
 
@@ -329,6 +334,42 @@ var Today = (function () {
       "</div></section>";
   }
 
+  // v2 Phase A: 56px sync strip. Compact replacement for the Together card.
+  // Two 32px avatars with percentages, meet-in-the-middle bar, 13px status.
+  // Tap expands the full Together card as a sheet.
+  function syncStripHTML(dateStr, me, partner) {
+    var myFrac = dayFraction(dateStr, me);
+    var pFrac = partner ? dayFraction(dateStr, partner) : 0;
+    var synced = partner ? Pod.inSync(dateStr, me, partner) : false;
+    var st = statusFor(dateStr, me, partner);
+    var youColor = Store.personColor(me);
+    var pColor = partner ? Store.personColor(partner) : "transparent";
+    var myPct = Math.round(myFrac * 100);
+    var pPct = Math.round(pFrac * 100);
+    var youVars = Colors.liquidVars(Store.getColorId(me));
+    var pVars = partner ? Colors.liquidVars(Store.getColorId(partner)) : "";
+    // Status line shows unless Nudge is visible (then it's dropped for the button)
+    var statusHTML = st.showNudge ?
+      '<button class="nudge glass" id="nudge-btn-strip">Nudge</button>' :
+      '<span class="strip-status' + (synced ? " is-sync" : "") + '">' + esc(st.line) + "</span>";
+    return '<button class="sync-strip glass' + (synced ? " synced" : "") + '" id="sync-strip"' +
+      ' style="--you:' + youColor + ";--partner:" + pColor + '"' +
+      enterCls(2) + enterDelay(2) + ' aria-label="Together status. Tap to expand.">' +
+      '<span class="strip-row">' +
+      '<span class="strip-avatar" style="' + youVars + '">' +
+      '<span class="strip-liquid' + (myPct === 0 ? " empty" : "") + '" style="height:' + myPct + '%"></span>' +
+      '<span class="strip-pct num' + (myFrac > 0.5 ? " on-liquid" : "") + '">' + myPct + "%</span></span>" +
+      '<span class="strip-bar" role="img" aria-label="Progress toward the middle">' +
+      '<span class="strip-fill strip-fill-me" style="width:' + (myFrac * 50) + '%"></span>' +
+      '<span class="strip-fill strip-fill-partner" style="width:' + (pFrac * 50) + '%"></span>' +
+      '<span class="strip-dot"></span></span>' +
+      (partner ?
+        '<span class="strip-avatar" style="' + pVars + '">' +
+        '<span class="strip-liquid' + (pPct === 0 ? " empty" : "") + '" style="height:' + pPct + '%"></span>' +
+        '<span class="strip-pct num' + (pFrac > 0.5 ? " on-liquid" : "") + '">' + pPct + "%</span></span>" : "") +
+      "</span>" + statusHTML + "</button>";
+  }
+
   function paintSphere(card, who, frac) {
     var wrap = card.querySelector('.sphere-wrap[data-who="' + who + '"]');
     if (!wrap) return;
@@ -364,6 +405,61 @@ var Today = (function () {
     card.querySelector(".tg-line").textContent = st.line;
     var nb = card.querySelector("#nudge-btn");
     if (nb) nb.classList.toggle("hidden", !st.showNudge);
+  }
+
+  // v2 Phase A: Repaint the sync strip in place.
+  function paintStrip(dateStr, me, partner) {
+    var strip = document.getElementById("sync-strip");
+    if (!strip) return;
+    var myFrac = dayFraction(dateStr, me);
+    var pFrac = partner ? dayFraction(dateStr, partner) : 0;
+    var synced = partner ? Pod.inSync(dateStr, me, partner) : false;
+    var st = statusFor(dateStr, me, partner);
+    strip.classList.toggle("synced", synced);
+    var myPct = Math.round(myFrac * 100);
+    var pPct = Math.round(pFrac * 100);
+    // Update avatars
+    var avatars = strip.querySelectorAll(".strip-avatar");
+    if (avatars[0]) {
+      var liq0 = avatars[0].querySelector(".strip-liquid");
+      liq0.style.height = myPct + "%";
+      liq0.classList.toggle("empty", myPct === 0);
+      var pct0 = avatars[0].querySelector(".strip-pct");
+      pct0.textContent = myPct + "%";
+      pct0.classList.toggle("on-liquid", myFrac > 0.5);
+    }
+    if (avatars[1] && partner) {
+      var liq1 = avatars[1].querySelector(".strip-liquid");
+      liq1.style.height = pPct + "%";
+      liq1.classList.toggle("empty", pPct === 0);
+      var pct1 = avatars[1].querySelector(".strip-pct");
+      pct1.textContent = pPct + "%";
+      pct1.classList.toggle("on-liquid", pFrac > 0.5);
+    }
+    // Update bar fills
+    strip.querySelector(".strip-fill-me").style.width = (myFrac * 50) + "%";
+    var pfPartner = strip.querySelector(".strip-fill-partner");
+    if (pfPartner) pfPartner.style.width = (pFrac * 50) + "%";
+    // Update status or nudge
+    var statusEl = strip.querySelector(".strip-status");
+    var nudgeEl = strip.querySelector("#nudge-btn-strip");
+    if (st.showNudge) {
+      if (statusEl) statusEl.remove();
+      if (!nudgeEl) {
+        var nb = document.createElement("button");
+        nb.className = "nudge glass";
+        nb.id = "nudge-btn-strip";
+        nb.textContent = "Nudge";
+        nb.addEventListener("click", function (e) { e.stopPropagation(); nudge(); });
+        strip.appendChild(nb);
+      }
+    } else {
+      if (nudgeEl) nudgeEl.remove();
+      if (statusEl) {
+        statusEl.textContent = st.line;
+        statusEl.classList.toggle("is-sync", synced);
+      }
+    }
   }
 
   /* ----- Nudge (Web Share; removed from the Sync screen per the brief) ----- */
@@ -402,6 +498,12 @@ var Today = (function () {
   function playSyncMoment(me, partner) {
     var card = document.getElementById("tg-card");
     if (card) card.classList.add("synced");
+    // v2 Phase A: animate the strip (glow + shimmer)
+    var strip = document.getElementById("sync-strip");
+    if (strip) {
+      strip.classList.add("synced", "playing");
+      setTimeout(function () { strip.classList.remove("playing"); }, 2500);
+    }
 
     var bloom = document.createElement("div");
     bloom.className = "sync-bloom";
@@ -607,13 +709,22 @@ var Today = (function () {
     else pText = pVal + "/" + pTarget;
 
     if (isCheck) {
-      var done = !!val;
-      var label = esc(habit.name) + (done ? ": done. Tap to undo." : ": not done. Tap to mark done.");
-      return '<button class="tile tile-check" data-habit="' + esc(habit.id) + '" style="--tint:' + tint + ';--gtint:' + tint + '" aria-label="' + label + '">' +
+      var inverted = !!habit.inverted;
+      // Inverted checks (Sugar-free) default to clean (true) when no value stored
+      var done = (val === undefined || val === null) ? (inverted ? true : false) : !!val;
+      var label, cap;
+      if (inverted) {
+        label = esc(habit.name) + (done ? ": clean. Tap if you had sugar." : ": had sugar. Tap to mark clean.");
+        cap = done ? "clean" : "had sugar";
+      } else {
+        label = esc(habit.name) + (done ? ": done. Tap to undo." : ": not done. Tap to mark done.");
+        cap = done ? "done" : "tap to check";
+      }
+      return '<button class="tile tile-check' + (inverted ? " tile-inverted" : "") + '" data-habit="' + esc(habit.id) + '" style="--tint:' + tint + ';--gtint:' + tint + '" aria-label="' + label + '">' +
         '<span class="t-top"><span class="t-label">' + esc(habit.name) + "</span></span>" +
         (partner ? '<span class="t-chip-abs">' + chipHTML(partner, pText) + "</span>" : "") +
         '<span class="check-circle js-gcheck' + (done ? " on" : "") + '" aria-hidden="true">' + ICONS.check + "</span>" +
-        '<span class="t-cap">' + (done ? "done" : "tap to check") + "</span>" +
+        '<span class="t-cap">' + cap + "</span>" +
         "</button>";
     }
 
@@ -638,12 +749,19 @@ var Today = (function () {
     var target = habit.targets[me] || 1;
     var isCheck = habit.type === "check";
     if (isCheck) {
-      var done = !!val;
+      var inverted = !!habit.inverted;
+      var done = (val === undefined || val === null) ? (inverted ? true : false) : !!val;
       var circle = tileEl.querySelector(".js-gcheck");
       if (circle) circle.classList.toggle("on", done);
       var cap = tileEl.querySelector(".t-cap");
-      if (cap) cap.textContent = done ? "done" : "tap to check";
-      tileEl.setAttribute("aria-label", esc(habit.name) + (done ? ": done. Tap to undo." : ": not done. Tap to mark done."));
+      if (cap) {
+        if (inverted) cap.textContent = done ? "clean" : "had sugar";
+        else cap.textContent = done ? "done" : "tap to check";
+      }
+      var ariaLabel;
+      if (inverted) ariaLabel = esc(habit.name) + (done ? ": clean. Tap if you had sugar." : ": had sugar. Tap to mark clean.");
+      else ariaLabel = esc(habit.name) + (done ? ": done. Tap to undo." : ": not done. Tap to mark done.");
+      tileEl.setAttribute("aria-label", ariaLabel);
       return;
     }
     val = val || 0;
@@ -903,7 +1021,9 @@ var Today = (function () {
     }
     // Generic habit: check type toggles, count type adds +1
     if (habit.type === "check") {
-      var gwas = !!Data.value(d, me, habit.id);
+      var graw = Data.value(d, me, habit.id);
+      // Inverted checks (Sugar-free) default to true (clean) when no value stored
+      var gwas = (graw === undefined || graw === null) ? (!!habit.inverted) : !!graw;
       var gval = gwas ? 0 : 1;
       logTile(habit, gval, el, function (v) { paintGeneric(el, habit, v); });
     } else {
@@ -1037,7 +1157,7 @@ var Today = (function () {
 
     root.innerHTML =
       headerHTML(dateStr, me, partner) +
-      togetherHTML(dateStr, me, partner) +
+      syncStripHTML(dateStr, me, partner) +
       habitsHeadHTML(partner) +
       '<div class="tile-grid"' + enterCls(4) + enterDelay(4) + ">" + tilesHTML(habitList, dateStr, me, partner) + "</div>" +
       '<button class="add-habit js-add-habit"' + enterCls(5) + enterDelay(5) + ' aria-label="Add a habit">' +
@@ -1056,6 +1176,27 @@ var Today = (function () {
 
     var nudgeBtn = document.getElementById("nudge-btn");
     if (nudgeBtn) nudgeBtn.addEventListener("click", nudge);
+
+    // v2 Phase A: strip tap expands the full Together card as a sheet
+    var strip = document.getElementById("sync-strip");
+    if (strip) strip.addEventListener("click", function (e) {
+      // Don't open the sheet if the Nudge button was tapped
+      if (e.target.closest("#nudge-btn-strip")) return;
+      var fullCard = togetherHTML(dateStr, me, partner);
+      openSheet("Together", null, fullCard);
+      // Wire up the nudge button inside the sheet
+      var sheetNudge = document.querySelector(".sheet #nudge-btn");
+      if (sheetNudge) sheetNudge.addEventListener("click", function (ev) {
+        ev.stopPropagation();
+        nudge();
+      });
+    });
+
+    var nudgeStripBtn = document.getElementById("nudge-btn-strip");
+    if (nudgeStripBtn) nudgeStripBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      nudge();
+    });
 
     var addBtn = root.querySelector(".js-add-habit");
     if (addBtn) addBtn.addEventListener("click", function () {
