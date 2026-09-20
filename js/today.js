@@ -335,7 +335,7 @@ var Today = (function () {
   }
 
   // v2 Phase A: 56px sync strip. Compact replacement for the Together card.
-  // Two 32px avatars with percentages, meet-in-the-middle bar, 13px status.
+  // Two 32px avatars with initials and percentages, meet-in-the-middle bar, 13px status.
   // Tap expands the full Together card as a sheet.
   function syncStripHTML(dateStr, me, partner) {
     var myFrac = dayFraction(dateStr, me);
@@ -348,6 +348,8 @@ var Today = (function () {
     var pPct = Math.round(pFrac * 100);
     var youVars = Colors.liquidVars(Store.getColorId(me));
     var pVars = partner ? Colors.liquidVars(Store.getColorId(partner)) : "";
+    var myInitial = (Store.personName(me) || "Y").charAt(0).toUpperCase();
+    var pInitial = partner ? (Store.personName(partner) || "P").charAt(0).toUpperCase() : "";
     // Status line shows unless Nudge is visible (then it's dropped for the button)
     var statusHTML = st.showNudge ?
       '<button class="nudge glass" id="nudge-btn-strip">Nudge</button>' :
@@ -356,16 +358,18 @@ var Today = (function () {
       ' style="--you:' + youColor + ";--partner:" + pColor + '"' +
       enterCls(2) + enterDelay(2) + ' aria-label="Together status. Tap to expand.">' +
       '<span class="strip-row">' +
-      '<span class="strip-avatar" style="' + youVars + '">' +
+      '<span class="strip-avatar" style="' + youVars + '" aria-label="' + esc(Store.personName(me)) + '">' +
       '<span class="strip-liquid' + (myPct === 0 ? " empty" : "") + '" style="height:' + myPct + '%"></span>' +
+      '<span class="strip-initial">' + esc(myInitial) + '</span>' +
       '<span class="strip-pct num' + (myFrac > 0.5 ? " on-liquid" : "") + '">' + myPct + "%</span></span>" +
       '<span class="strip-bar" role="img" aria-label="Progress toward the middle">' +
       '<span class="strip-fill strip-fill-me" style="width:' + (myFrac * 50) + '%"></span>' +
       '<span class="strip-fill strip-fill-partner" style="width:' + (pFrac * 50) + '%"></span>' +
       '<span class="strip-dot"></span></span>' +
       (partner ?
-        '<span class="strip-avatar" style="' + pVars + '">' +
+        '<span class="strip-avatar" style="' + pVars + '" aria-label="' + esc(Store.personName(partner)) + '">' +
         '<span class="strip-liquid' + (pPct === 0 ? " empty" : "") + '" style="height:' + pPct + '%"></span>' +
+        '<span class="strip-initial">' + esc(pInitial) + '</span>' +
         '<span class="strip-pct num' + (pFrac > 0.5 ? " on-liquid" : "") + '">' + pPct + "%</span></span>" : "") +
       "</span>" + statusHTML + "</button>";
   }
@@ -427,6 +431,8 @@ var Today = (function () {
       var pct0 = avatars[0].querySelector(".strip-pct");
       pct0.textContent = myPct + "%";
       pct0.classList.toggle("on-liquid", myFrac > 0.5);
+      var init0 = avatars[0].querySelector(".strip-initial");
+      if (init0) init0.classList.toggle("on-liquid", myFrac > 0.5);
     }
     if (avatars[1] && partner) {
       var liq1 = avatars[1].querySelector(".strip-liquid");
@@ -435,6 +441,8 @@ var Today = (function () {
       var pct1 = avatars[1].querySelector(".strip-pct");
       pct1.textContent = pPct + "%";
       pct1.classList.toggle("on-liquid", pFrac > 0.5);
+      var init1 = avatars[1].querySelector(".strip-initial");
+      if (init1) init1.classList.toggle("on-liquid", pFrac > 0.5);
     }
     // Update bar fills
     strip.querySelector(".strip-fill-me").style.width = (myFrac * 50) + "%";
@@ -704,8 +712,16 @@ var Today = (function () {
     var pVal = partner ? Data.value(dateStr, partner, habit.id) : undefined;
     var pTarget = partner ? (habit.targets[partner] || 1) : 1;
     var pText;
-    if (pVal === undefined || pVal === null) pText = "0/" + pTarget;
-    else if (isCheck) pText = pVal ? "done" : "0/1";
+    var pInverted = !!habit.inverted;
+    if (pVal === undefined || pVal === null) {
+      // Inverted checks default to clean (true) when no value stored
+      if (isCheck && pInverted) pText = "clean";
+      else pText = "0/" + pTarget;
+    }
+    else if (isCheck) {
+      if (pInverted) pText = pVal ? "clean" : "had sugar";
+      else pText = pVal ? "done" : "not yet";
+    }
     else pText = pVal + "/" + pTarget;
 
     if (isCheck) {
