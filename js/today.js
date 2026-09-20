@@ -809,6 +809,21 @@ var Today = (function () {
   }
 
   /* ----- render ----- */
+
+  // Placeholder blocks while check-ins load. Nothing is painted from the
+  // cache until the fetch below resolves: painting early shows 0/"not
+  // yet", and a tap would then overwrite the real totals.
+  function skeletonHTML() {
+    return '<div class="skel-wrap" aria-label="Loading today">' +
+      '<div class="skel skel-head"></div>' +
+      '<div class="skel skel-card"></div>' +
+      '<div class="skel-grid">' +
+      '<div class="skel skel-tile skel-tall"></div>' +
+      '<div class="skel skel-tile"></div>' +
+      '<div class="skel skel-tile"></div>' +
+      "</div></div>";
+  }
+
   function render() {
     var root = document.getElementById("today-root");
     var me = Store.get("person");
@@ -816,7 +831,31 @@ var Today = (function () {
     if (!root || !me || !habitsDoc) return;
     var dateStr = viewedDate();
     var partner = Store.partnerId();
-    var habitList = habitsDoc.habits;
+
+    root.innerHTML = skeletonHTML();
+
+    var fetches = [Data.fetchCheckin(dateStr, me)];
+    if (partner) fetches.push(Data.fetchCheckin(dateStr, partner));
+    var monday = mondayOf(localDate());
+    for (var i = 0; i < 7; i++) {
+      var d = addDays(monday, i);
+      fetches.push(Data.fetchCheckin(d, me));
+      if (partner) fetches.push(Data.fetchCheckin(d, partner));
+    }
+
+    Promise.all(fetches).then(function () {
+      paint(dateStr, me, partner, habitsDoc.habits);
+    }, function () {
+      // Fetch failed (offline or server error): paint from whatever is
+      // cached rather than leaving the skeleton up. The offline banner
+      // covers the offline case.
+      paint(dateStr, me, partner, habitsDoc.habits);
+    });
+  }
+
+  function paint(dateStr, me, partner, habitList) {
+    var root = document.getElementById("today-root");
+    if (!root) return;
 
     root.innerHTML =
       headerHTML(dateStr, me, partner) +
