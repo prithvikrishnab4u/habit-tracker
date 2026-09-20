@@ -18,14 +18,13 @@ var Manage = (function () {
     var unit = h.unit || "times";
     if (target === 1 && /s$/.test(unit)) unit = unit.slice(0, -1);
     var per = h.period === "week" ? "a week" : "a day";
-    return target + " " + unit + " " + per;
+    return Number(target).toLocaleString("en-US") + " " + unit + " " + per;
   }
 
   function habitRow(h) {
     var tint = tintFor(h);
     return '<button class="habit-row" data-habit="' + h.id + '" style="--tint:' + tint + '">' +
-      '<span class="habit-icon" style="background:linear-gradient(135deg,' + tint + " 0%,color-mix(in srgb," + tint + ' 62%,#000) 100%)" aria-hidden="true">' +
-      esc(h.name.charAt(0).toUpperCase()) + "</span>" +
+      '<span class="habit-icon" style="background:linear-gradient(135deg,' + tint + " 0%,color-mix(in srgb," + tint + ' 62%,#000) 100%)" aria-hidden="true"></span>' +
       '<span class="habit-text"><span class="habit-name">' + esc(h.name) + "</span>" +
       '<span class="habit-detail">' + esc(detailFor(h)) + "</span></span>" +
       '<span class="habit-chev" aria-hidden="true">\u203A</span></button>';
@@ -73,13 +72,13 @@ var Manage = (function () {
       '<div class="chips" style="justify-content:flex-start" id="ah-units">' + unitChips + "</div>" +
       '<label>Your target</label>' +
       '<div class="stepper" style="margin-bottom:12px">' +
-      '<button id="ah-dec" aria-label="Lower target">-</button>' +
+      '<button id="ah-dec" aria-label="Lower target">\u2212</button>' +
       '<span class="step-val num" id="ah-val">1</span>' +
       '<button id="ah-inc" aria-label="Raise target">+</button>' +
       "</div>" +
       '<label>' + esc(Store.personName(partner)) + "'s target</label>" +
       '<div class="stepper" style="margin-bottom:20px">' +
-      '<button id="ah-pdec" aria-label="Lower partner target">-</button>' +
+      '<button id="ah-pdec" aria-label="Lower partner target">\u2212</button>' +
       '<span class="step-val num" id="ah-pval">1</span>' +
       '<button id="ah-pinc" aria-label="Raise partner target">+</button>' +
       "</div>" +
@@ -229,13 +228,13 @@ var Manage = (function () {
       '<input id="ah-custom-unit" placeholder="e.g. pages" value="' + esc(customUnit) + '" style="display:' + (customUnit ? "block" : "none") + ';margin-top:8px;" maxlength="20">' +
       '<label>Your target</label>' +
       '<div class="stepper" style="margin-bottom:12px">' +
-      '<button id="ah-dec" aria-label="Lower target">-</button>' +
+      '<button id="ah-dec" aria-label="Lower target">\u2212</button>' +
       '<span class="step-val num" id="ah-val">' + target + "</span>" +
       '<button id="ah-inc" aria-label="Raise target">+</button>' +
       "</div>" +
       '<label>' + esc(Store.personName(partner)) + "'s target</label>" +
       '<div class="stepper" style="margin-bottom:20px">' +
-      '<button id="ah-pdec" aria-label="Lower partner target">-</button>' +
+      '<button id="ah-pdec" aria-label="Lower partner target">\u2212</button>' +
       '<span class="step-val num" id="ah-pval">' + partnerTarget + "</span>" +
       '<button id="ah-pinc" aria-label="Raise partner target">+</button>' +
       "</div>" +
