@@ -14,9 +14,9 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
-<link rel="stylesheet" href="css/app.css?v=2310ac4">
+<link rel="stylesheet" href="css/app.css?v=ae92631f">
 </head>
-<body data-build="2310ac4">
+<body data-build="ae92631f">
 <div id="wallpaper" aria-hidden="true">
   <div class="orb orb-you"></div>
   <div class="orb orb-partner"></div>
@@ -38,6 +38,9 @@
   <section id="screen-pod" class="screen hidden" aria-label="Sync">
     <div id="pod-root"></div>
   </section>
+  <section id="screen-backlog" class="screen hidden" aria-label="Backlog">
+    <div id="backlog-root"></div>
+  </section>
   <section id="screen-habits" class="screen hidden" aria-label="Habits">
     <div id="manage-root"></div>
   </section>
@@ -51,6 +54,10 @@
       <svg viewBox="0 0 26 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="12" r="7"/><circle cx="17" cy="12" r="7"/></svg>
       <span>Sync</span>
     </button>
+    <button class="tab" data-tab="backlog" aria-label="Backlog">
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+      <span>Backlog</span>
+    </button>
     <button class="tab" data-tab="habits" aria-label="Habits">
       <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>
       <span>Habits</span>
@@ -60,16 +67,17 @@
 
 <div id="toast" class="glass hidden" role="status"></div>
 
-<script src="js/util.js?v=2310ac4"></script>
-<script src="js/api.js?v=2310ac4"></script>
-<script src="js/colors.js?v=2310ac4"></script>
-<script src="js/demo.js?v=2310ac4"></script>
-<script src="js/store.js?v=2310ac4"></script>
-<script src="js/data.js?v=2310ac4"></script>
-<script src="js/today.js?v=2310ac4"></script>
-<script src="js/pod.js?v=2310ac4"></script>
-<script src="js/manage.js?v=2310ac4"></script>
-<script src="js/onboarding.js?v=2310ac4"></script>
-<script src="js/app.js?v=2310ac4"></script>
+<script src="js/util.js?v=ae92631f"></script>
+<script src="js/api.js?v=ae92631f"></script>
+<script src="js/colors.js?v=ae92631f"></script>
+<script src="js/demo.js?v=ae92631f"></script>
+<script src="js/store.js?v=ae92631f"></script>
+<script src="js/data.js?v=ae92631f"></script>
+<script src="js/backlog.js?v=ae92631f"></script>
+<script src="js/today.js?v=ae92631f"></script>
+<script src="js/pod.js?v=ae92631f"></script>
+<script src="js/manage.js?v=ae92631f"></script>
+<script src="js/onboarding.js?v=ae92631f"></script>
+<script src="js/app.js?v=ae92631f"></script>
 </body>
 </html>
