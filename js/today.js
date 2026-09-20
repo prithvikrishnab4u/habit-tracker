@@ -9,6 +9,7 @@ var Today = (function () {
   var firstRender = true;
 
   var TINTS = { water: "#0A84FF", exercise: "#BF5AF2", steps: "#30D158" };
+  var EXTRA_TINTS = ["#5AC8FA", "#5E5CE6", "#FF375F"]; /* teal, indigo, pink, in order */
 
   /* ----- date helpers ----- */
   function viewedDate() { return addDays(localDate(), dateOffset); }
@@ -165,6 +166,12 @@ var Today = (function () {
 
   /* ----- toast with an action button (Undo / Retry) ----- */
   var toastTimer = null;
+  function clearToast() {
+    var el = document.getElementById("toast");
+    if (el) el.classList.add("hidden");
+    clearTimeout(toastTimer);
+    clearTimeout(showToast._t);
+  }
   function toastAction(msg, label, fn) {
     var el = document.getElementById("toast");
     el.innerHTML = "";
@@ -549,8 +556,8 @@ var Today = (function () {
     var progress = (val === undefined || val === null) ? 0 : Math.min(val / target, 1);
     var done = val !== undefined && val !== null && val >= target;
     return '<button class="tile tile-steps" data-habit="steps" style="--tint:' + TINTS.steps + '" aria-label="' + esc(stepsLabel(habit, val, me, partner)) + '">' +
-      '<span class="t-top"><span class="t-label deep-steps">' + ICONS.steps + "Steps</span>" +
-      (partner ? chipHTML(partner, pText, true) : "") + "</span>" +
+      '<span class="t-top"><span class="t-label deep-steps">' + ICONS.steps + "Steps</span></span>" +
+      (partner ? '<span class="t-chip-abs">' + chipHTML(partner, pText) + "</span>" : "") +
       '<span class="s-bottom"><span class="s-numrow"><span class="s-num num js-sval">' + fmtStepsFull(val) + "</span>" +
       '<span class="s-done js-sdone' + (done ? "" : " hidden") + '" aria-hidden="true">' + ICONS.badge + "</span></span>" +
       trailSVG(progress) + "</span>" +
@@ -576,37 +583,42 @@ var Today = (function () {
     tileEl.setAttribute("aria-label", stepsLabel(habit, val, me, Store.partnerId()));
   }
 
-  function genericTile(habit, dateStr, me, partner) {
+  function genericTile(habit, dateStr, me, partner, tint) {
     var target = habit.targets[me] || 1;
     var val = Data.value(dateStr, me, habit.id);
     var isCheck = habit.type === "check";
-    var done, displayVal, pct;
-    if (isCheck) {
-      done = !!val;
-      displayVal = done ? "1" : "0";
-      pct = done ? 1 : 0;
-    } else {
-      val = val || 0;
-      done = val >= target;
-      displayVal = val;
-      pct = Math.min(val / target, 1);
-    }
+    tint = tint || TINTS[habit.id] || "#A259FF";
     var pVal = partner ? Data.value(dateStr, partner, habit.id) : undefined;
     var pTarget = partner ? (habit.targets[partner] || 1) : 1;
     var pText;
     if (pVal === undefined || pVal === null) pText = "0/" + pTarget;
-    else if (habit.type === "check") pText = pVal ? "done" : "0/1";
+    else if (isCheck) pText = pVal ? "done" : "0/1";
     else pText = pVal + "/" + pTarget;
+
+    if (isCheck) {
+      var done = !!val;
+      var label = esc(habit.name) + (done ? ": done. Tap to undo." : ": not done. Tap to mark done.");
+      return '<button class="tile tile-check" data-habit="' + esc(habit.id) + '" style="--tint:' + tint + ';--gtint:' + tint + '" aria-label="' + label + '">' +
+        '<span class="t-top"><span class="t-label">' + esc(habit.name) + "</span></span>" +
+        (partner ? '<span class="t-chip-abs">' + chipHTML(partner, pText) + "</span>" : "") +
+        '<span class="check-circle js-gcheck' + (done ? " on" : "") + '" aria-hidden="true">' + ICONS.check + "</span>" +
+        '<span class="t-cap">' + (done ? "done" : "tap to check") + "</span>" +
+        "</button>";
+    }
+
+    var done, displayVal, pct;
+    val = val || 0;
+    done = val >= target;
+    displayVal = val;
+    pct = Math.min(val / target, 1);
     var unit = habit.unit || "times";
-    var label = esc(habit.name) + ": " + displayVal + " of " + target + ". Tap to add one.";
-    var tint = TINTS[habit.id] || "#A259FF";
-    return '<button class="tile tile-generic" data-habit="' + esc(habit.id) + '" style="--tint:' + tint + ';--gtint:' + tint + '" aria-label="' + label + '">' +
+    var clabel = esc(habit.name) + ": " + displayVal + " of " + target + ". Tap to add one.";
+    return '<button class="tile tile-generic" data-habit="' + esc(habit.id) + '" style="--tint:' + tint + ';--gtint:' + tint + '" aria-label="' + clabel + '">' +
       '<span class="t-top"><span class="t-label">' + esc(habit.name) + "</span>" +
       (partner ? chipHTML(partner, pText, true) : "") + "</span>" +
       '<span class="g-num num"><span class="js-gval">' + displayVal + "</span><small> / " + target + "</small></span>" +
       '<span class="t-cap">' + esc(unit) + "</span>" +
       '<span class="g-bar" aria-hidden="true"><i class="js-gfill" style="width:' + Math.round(pct * 100) + '%"></i></span>' +
-      (isCheck ? '<span class="t-check js-gcheck' + (done ? "" : " hidden") + '" aria-hidden="true">' + ICONS.badge + "</span>" : "") +
       "</button>";
   }
 
@@ -614,28 +626,19 @@ var Today = (function () {
     var me = Store.get("person");
     var target = habit.targets[me] || 1;
     var isCheck = habit.type === "check";
-    var displayVal, pct, done;
     if (isCheck) {
-      done = !!val;
-      displayVal = done ? "1" : "0";
-      pct = done ? 1 : 0;
-      var badge = tileEl.querySelector(".js-gcheck");
-      if (badge) {
-        if (done && badge.classList.contains("hidden")) {
-          badge.classList.remove("hidden", "pop");
-          void badge.offsetWidth;
-          badge.classList.add("pop");
-        } else if (!done) {
-          badge.classList.add("hidden");
-          badge.classList.remove("pop");
-        }
-      }
-    } else {
-      val = val || 0;
-      done = val >= target;
-      displayVal = val;
-      pct = Math.min(val / target, 1);
+      var done = !!val;
+      var circle = tileEl.querySelector(".js-gcheck");
+      if (circle) circle.classList.toggle("on", done);
+      var cap = tileEl.querySelector(".t-cap");
+      if (cap) cap.textContent = done ? "done" : "tap to check";
+      tileEl.setAttribute("aria-label", esc(habit.name) + (done ? ": done. Tap to undo." : ": not done. Tap to mark done."));
+      return;
     }
+    val = val || 0;
+    var done = val >= target;
+    var displayVal = val;
+    var pct = Math.min(val / target, 1);
     tileEl.querySelector(".js-gval").textContent = displayVal;
     tileEl.querySelector(".js-gfill").style.width = Math.round(pct * 100) + "%";
     tileEl.setAttribute("aria-label", esc(habit.name) + ": " + displayVal + " of " + target + ". Tap to add one.");
@@ -648,11 +651,14 @@ var Today = (function () {
       var ai = order.indexOf(a.id), bi = order.indexOf(b.id);
       return (ai < 0 ? 99 : ai) - (bi < 0 ? 99 : bi);
     });
+    var extraIdx = 0;
     return sorted.map(function (h) {
       if (h.id === "water") return waterTile(h, dateStr, me, partner);
       if (h.id === "exercise") return exerciseTile(h, dateStr, me, partner);
       if (h.id === "steps") return stepsTile(h, dateStr, me, partner);
-      return genericTile(h, dateStr, me, partner);
+      var tint = EXTRA_TINTS[extraIdx % EXTRA_TINTS.length];
+      extraIdx++;
+      return genericTile(h, dateStr, me, partner, tint);
     }).join("");
   }
 
@@ -748,7 +754,6 @@ var Today = (function () {
       '<button class="qchip" data-add="2500">+2.5k</button>' +
       '<button class="qchip" data-add="-1000">&minus;1k</button>' +
       '<button class="qchip" data-set="' + target + '">Goal</button>' +
-      '<button class="qchip" data-set="0">Done</button>' +
       "</div>" +
       '<button class="linkbtn js-exact-toggle">Enter exact number.</button>' +
       '<div class="exactrow hidden">' +
@@ -763,7 +768,6 @@ var Today = (function () {
       shown = v;
       paint();
       logTile(habit, shown, tileEl, function (nv) { paintSteps(tileEl, habit, nv); });
-      s.close();
     }
     body.querySelectorAll(".qchip").forEach(function (c) {
       c.onclick = function () {
@@ -934,9 +938,9 @@ var Today = (function () {
       '<button class="dnav" data-nav="1" aria-label="Next day"' + (dateOffset >= 0 ? " disabled" : "") + ">&#8250;</button>" +
       "</div>" +
       (partner
-        ? '<div class="pair-capsule glass" aria-label="You and ' + esc(Store.personName(partner)) + '">' +
+        ? '<div class="pair-capsule" aria-label="You and ' + esc(Store.personName(partner)) + '">' +
           '<span class="pair-pair">' + avatarHTML(me, 30) + avatarHTML(partner, 30) + "</span></div>"
-        : '<div class="pair-capsule glass" aria-label="Just you">' + avatarHTML(me, 30) + "</div>") +
+        : '<div class="pair-capsule" aria-label="Just you">' + avatarHTML(me, 30) + "</div>") +
       "</div>" +
       '<div class="title-block"' + enterCls(1) + enterDelay(1) + ">" +
       '<h1 class="screen-title">' + esc(title) + "</h1>" +
@@ -1071,6 +1075,7 @@ var Today = (function () {
     habitMet: habitMet,
     dayFraction: dayFraction,
     ringSVG: ringSVG,
-    paintInkVars: paintInkVars
+    paintInkVars: paintInkVars,
+    clearToast: clearToast
   };
 })();
