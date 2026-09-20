@@ -1,6 +1,6 @@
 /* Pod screen (Phase 3).
    Days-in-sync hero, 30-day split grid, per-habit streaks,
-   the v1 sync moment, and the native-share Nudge. */
+   and the v1 sync banner. */
 
 var Pod = (function () {
   var root = null;
@@ -83,24 +83,6 @@ var Pod = (function () {
       dim(Store.personColor(partner), pFrac) + " 100%);";
   }
 
-  function nudge(streak) {
-    var partner = Store.personName(Store.partnerId());
-    var text = streak > 0
-      ? "You and " + partner + " are " + streak + " days in sync. Keep it going."
-      : "Back to day one on the habit pod. Today counts.";
-    if (navigator.share) {
-      navigator.share({ title: "Habit Tracker", text: text }).catch(function () {});
-    } else if (navigator.clipboard) {
-      navigator.clipboard.writeText(text).then(function () {
-        showToast("Copied. Send it to " + partner + ".");
-      }).catch(function () {
-        showToast(text);
-      });
-    } else {
-      showToast(text);
-    }
-  }
-
   function showSyncBanner() {
     var b = document.getElementById("sync-banner");
     if (!b) {
@@ -159,15 +141,10 @@ var Pod = (function () {
         '<p class="hero-sub">' + (streak > 0
           ? "Current run. Best in 30 days: " + best + "."
           : "No run going. Today is a fresh start.") + "</p>" +
-        '<button class="btn" id="nudge-btn">Nudge ' + esc(Store.personName(partner)) + "</button>" +
         "</div>" +
         '<div class="sync-grid glass" role="group" aria-label="Last 30 days">' + cells + "</div>" +
         '<div class="streaks glass"><h2>Streaks</h2>' +
         '<p class="sec-label">Per habit, both of you</p>' + streakRows + "</div>";
-
-      document.getElementById("nudge-btn").addEventListener("click", function () {
-        nudge(streak);
-      });
 
       if (todaySync) showSyncBanner();
     }).catch(function () {

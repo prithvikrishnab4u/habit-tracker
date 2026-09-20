@@ -155,6 +155,7 @@ var Manage = (function () {
         return Store.load();
       }).then(function () {
         render();
+        if (window.Today) Today.render();
         showToast("Habit added.");
       }).catch(function () {
         btn.disabled = false;
@@ -194,5 +195,5 @@ var Manage = (function () {
     document.getElementById("signout-btn").addEventListener("click", signOut);
   }
 
-  return { render: render };
+  return { render: render, addSheet: addSheet };
 })();

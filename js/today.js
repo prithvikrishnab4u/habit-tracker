@@ -1,22 +1,29 @@
-/* Today screen (Phase 2).
-   Habit rows, not person columns. Your control gets ~75% of each row;
-   your partner is a compact read-only status on the right. */
+/* Today screen (Phase 2 rebuild).
+   Together card + tile grid. Presentation only: the save pipeline
+   (Data.saveEntry with undo/retry), the sheets, and the Web Share nudge
+   keep their existing behavior. Vanilla JS, no build step. */
 
 var Today = (function () {
-  var root = null;
   var dateOffset = 0; // 0 = today, down to -2 for late logging
   var MAX_BACK = 2;
+  var firstRender = true;
 
   var TINTS = { water: "#0A84FF", exercise: "#BF5AF2", steps: "#30D158" };
 
+  /* ----- date helpers ----- */
   function viewedDate() { return addDays(localDate(), dateOffset); }
+
+  function setDay(offset) {
+    dateOffset = Math.max(-MAX_BACK, Math.min(0, offset));
+    render();
+  }
 
   function dateLabel() {
     if (dateOffset === 0) return "Today";
     if (dateOffset === -1) return "Yesterday";
     var parts = viewedDate().split("-").map(Number);
     var d = new Date(parts[0], parts[1] - 1, parts[2]);
-    return d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
+    return d.toLocaleDateString(undefined, { weekday: "long" });
   }
 
   function fullDateLabel() {
@@ -37,7 +44,13 @@ var Today = (function () {
     return Store.get("habits").habits.filter(function (h) { return h.id === id; })[0];
   }
 
-  /* ----- sync helpers (shared with the Pod screen in Phase 3) ----- */
+  function greeting() {
+    var h = new Date().getHours();
+    var word = h < 12 ? "morning" : h < 17 ? "afternoon" : "evening";
+    return "Good " + word + ", " + Store.personName(Store.get("person"));
+  }
+
+  /* ----- sync helpers (shared with the Pod screen) ----- */
   function habitMet(habit, personId, entries) {
     if (habit.period !== "day" || !habit.syncEligible) return null; // not evaluated
     var v = entries ? entries[habit.id] : undefined;
@@ -68,6 +81,50 @@ var Today = (function () {
       ' stroke-linecap="round" stroke-dasharray="' + c.toFixed(1) + '" stroke-dashoffset="' + off.toFixed(1) + '"' +
       ' transform="rotate(-90 ' + size / 2 + " " + size / 2 + ')"/></svg>';
   }
+
+  /* ----- entrance (first paint only) ----- */
+  function enterCls(i) { return firstRender ? " press-in" : ""; }
+  function enterDelay(i) { return firstRender ? ' style="--enter-d:' + (i * 60) + 'ms"' : ""; }
+
+  /* ----- small builders ----- */
+  function avatarHTML(personId, px) {
+    var name = Store.personName(personId) || "?";
+    var color = Store.personColor(personId);
+    return '<span class="avatar" style="width:' + px + "px;height:" + px + "px;background:" + color + ';font-size:' + Math.round(px * 0.45) + 'px" aria-hidden="true">' +
+      esc(name.charAt(0).toUpperCase()) + "</span>";
+  }
+
+  // Seamless looping wave: 240-unit path shown at 200% width,
+  // translated -50% per loop.
+  function waveSVG(fill, extra) {
+    return '<svg class="wave ' + (extra || "") + '" viewBox="0 0 240 10" preserveAspectRatio="none" aria-hidden="true">' +
+      '<path d="M0 5 Q15 1 30 5 T60 5 T90 5 T120 5 T150 5 T180 5 T210 5 T240 5 V10 H0 Z" fill="' + fill + '"/></svg>';
+  }
+
+  function chipHTML(personId, valueText) {
+    return '<span class="t-chip">' + avatarHTML(personId, 20) +
+      '<span class="t-chip-val num">' + esc(valueText) + "</span></span>";
+  }
+
+  function fmtSteps(n) {
+    if (n === undefined || n === null) return "--";
+    if (n < 1000) return String(n);
+    var k = Math.round((n / 1000) * 10) / 10;
+    return k + "k";
+  }
+
+  function glowFor(personId) {
+    return Colors.get(Store.getColorId(personId)).base + "8C"; // 55% alpha
+  }
+
+  var ICONS = {
+    water: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3c3 4.2 6 7.6 6 11a6 6 0 1 1-12 0c0-3.4 3-6.8 6-11z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>',
+    exercise: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 4.5 13.5H11L9.5 22 19 10h-6.5L13 2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>',
+    steps: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l2.5 7 4-15 2.5 8H21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    check: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2" opacity="0.35"/><path d="M8 12.5l2.6 2.6L16 9.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    plus: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>',
+    badge: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 12.5l3.2 3.2L17 9" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+  };
 
   /* ----- toast with an action button (Undo / Retry) ----- */
   var toastTimer = null;
@@ -119,15 +176,16 @@ var Today = (function () {
   }
 
   /* ----- save pipeline: optimistic UI + pending dot + undo/retry ----- */
-  function commit(dateStr, personId, habitId, newVal, prevVal, apply, revert, rowEl) {
+  function commit(dateStr, personId, habitId, newVal, prevVal, apply, revert, tileEl) {
     apply();
     var dot = document.createElement("span");
     dot.className = "pending-dot";
-    rowEl.appendChild(dot);
+    tileEl.appendChild(dot);
     Data.saveEntry(dateStr, personId, habitId, newVal, prevVal, {
       pending: function (on) { dot.style.display = on ? "block" : "none"; },
       ok: function () {
         dot.remove();
+        afterWrite(dateStr, personId);
         var u = Data.peekUndo();
         toastAction("Saved.", "Undo", function () {
           Data.undoLast().then(function () { render(); });
@@ -137,356 +195,677 @@ var Today = (function () {
         dot.remove();
         revert();
         toastAction("Couldn't save.", "Retry", function () {
-          commit(dateStr, personId, habitId, newVal, prevVal, apply, revert, rowEl);
+          commit(dateStr, personId, habitId, newVal, prevVal, apply, revert, tileEl);
         });
       }
     });
   }
 
-  /* ----- row renderers ----- */
-  function partnerCell(personId, html) {
-    var name = Store.personName(personId);
-    var color = Store.personColor(personId);
-    return '<div class="row-partner"><span class="pname">' + esc(name) + "</span>" + html +
-      '<span class="pdot" style="background:' + color + '"></span></div>';
+  // Wraps commit() for tile taps: paints the tile optimistically, reverts
+  // the paint if the write fails.
+  function logTile(habit, newVal, tileEl, paint, dateStr) {
+    var me = Store.get("person");
+    var d = dateStr || viewedDate();
+    var prevVal = Data.value(d, me, habit.id);
+    commit(d, me, habit.id, newVal, prevVal,
+      function () { paint(newVal); },
+      function () { paint(prevVal); },
+      tileEl);
   }
 
-  function waterRow(habit, dateStr, me, partner) {
+  // After a successful write: repaint the Together card for the viewed date
+  // and check the sync moment.
+  function afterWrite(dateStr, personId) {
+    var partner = Store.partnerId();
+    var vd = viewedDate();
+    paintTogether(vd, personId, partner);
+    maybeSyncMoment(vd, personId, partner);
+  }
+
+  /* ----- Together card ----- */
+  function sphereHTML(personId, frac, waveCls, label, who) {
+    var pct = Math.round(frac * 100);
+    return '<div class="sphere-wrap" data-who="' + who + '">' +
+      '<div class="sphere" style="' + Colors.liquidVars(Store.getColorId(personId)) + "--glow:" + glowFor(personId) + '">' +
+      '<span class="sphere-liquid' + (pct === 0 ? " empty" : "") + '" style="height:' + pct + '%">' + waveSVG("var(--liq-top)", waveCls) + "</span>" +
+      '<span class="sphere-gloss"></span>' +
+      '<span class="sphere-pct num' + (frac > 0.5 ? " on-liquid" : "") + '">' + pct + "%</span>" +
+      "</div>" +
+      '<span class="sphere-name">' + esc(label) + "</span></div>";
+  }
+
+  // Status copy, word for word from the brief. Names are raw here; the HTML
+  // builder escapes, the painter uses textContent.
+  function statusFor(dateStr, me, partner) {
+    if (!partner) return { top: "Meet in the middle", line: "Just you for now.", showNudge: false };
+    var meDone = dayFraction(dateStr, me) >= 1;
+    var pDone = dayFraction(dateStr, partner) >= 1;
+    var pName = Store.personName(partner);
+    if (meDone && pDone) return { top: "In sync", line: "Both done. That is a sync day.", showNudge: false };
+    if (pDone) return { top: "Meet in the middle", line: pName + " is done. Your move.", showNudge: false };
+    if (meDone) return { top: "Meet in the middle", line: "You are done. " + pName + " is not yet.", showNudge: true };
+    return { top: "Meet in the middle", line: "Meet in the middle.", showNudge: true };
+  }
+
+  function togetherHTML(dateStr, me, partner) {
+    var myFrac = dayFraction(dateStr, me);
+    var pFrac = partner ? dayFraction(dateStr, partner) : 0;
+    var synced = partner ? Pod.inSync(dateStr, me, partner) : false;
+    var st = statusFor(dateStr, me, partner);
+    var youColor = Store.personColor(me);
+    var pColor = partner ? Store.personColor(partner) : "transparent";
+    return '<section class="together-card glass' + (synced ? " synced" : "") + '" id="tg-card"' +
+      enterCls(2) + enterDelay(2) + ' aria-label="Together">' +
+      '<div class="tg-head"><span class="tg-label">TOGETHER</span>' +
+      '<span class="tg-status' + (synced ? " is-sync" : "") + '">' + esc(st.top) + "</span></div>" +
+      '<div class="tg-mid">' +
+      sphereHTML(me, myFrac, "w6", "You", "me") +
+      '<div class="tube" role="img" aria-label="Progress toward the middle">' +
+      '<span class="tube-fill tube-you" style="width:' + (myFrac * 50) + "%;background:" + youColor + '"></span>' +
+      '<span class="tube-fill tube-partner" style="width:' + (pFrac * 50) + "%;background:" + pColor + '"></span>' +
+      '<span class="tube-sync" style="--you:' + youColor + ";--partner:" + pColor + '"></span>' +
+      "</div>" +
+      (partner ? sphereHTML(partner, pFrac, "w7", Store.personName(partner), "partner") : "") +
+      "</div>" +
+      '<div class="tg-div"></div>' +
+      '<div class="tg-foot"><span class="tg-line">' + esc(st.line) + "</span>" +
+      '<button class="nudge glass' + (st.showNudge ? "" : " hidden") + '" id="nudge-btn">Nudge</button>' +
+      "</div></section>";
+  }
+
+  function paintSphere(card, who, frac) {
+    var wrap = card.querySelector('.sphere-wrap[data-who="' + who + '"]');
+    if (!wrap) return;
+    var pct = Math.round(frac * 100);
+    var liq = wrap.querySelector(".sphere-liquid");
+    liq.style.height = pct + "%";
+    liq.classList.toggle("empty", pct <= 0);
+    var num = wrap.querySelector(".sphere-pct");
+    num.textContent = pct + "%";
+    num.classList.toggle("on-liquid", frac > 0.5);
+  }
+
+  // Repaint the Together card in place so liquid and tube transitions play.
+  function paintTogether(dateStr, me, partner) {
+    var card = document.getElementById("tg-card");
+    if (!card) return;
+    var myFrac = dayFraction(dateStr, me);
+    var pFrac = partner ? dayFraction(dateStr, partner) : 0;
+    var synced = partner ? Pod.inSync(dateStr, me, partner) : false;
+    var st = statusFor(dateStr, me, partner);
+    card.classList.toggle("synced", synced);
+    var stEl = card.querySelector(".tg-status");
+    stEl.textContent = st.top;
+    stEl.classList.toggle("is-sync", synced);
+    paintSphere(card, "me", myFrac);
+    paintSphere(card, "partner", pFrac);
+    card.querySelector(".tube-you").style.width = (myFrac * 50) + "%";
+    card.querySelector(".tube-partner").style.width = (pFrac * 50) + "%";
+    card.querySelector(".tg-line").textContent = st.line;
+    var nb = card.querySelector("#nudge-btn");
+    if (nb) nb.classList.toggle("hidden", !st.showNudge);
+  }
+
+  /* ----- Nudge (Web Share; removed from the Sync screen per the brief) ----- */
+  function nudge() {
+    var partner = Store.personName(Store.partnerId());
+    var text = "Your move on our habits. Today counts.";
+    if (navigator.share) {
+      navigator.share({ title: "Habit Tracker", text: text }).catch(function () {});
+    } else if (navigator.clipboard) {
+      navigator.clipboard.writeText(text).then(function () {
+        showToast("Copied. Send it to " + partner + ".");
+      }).catch(function () {
+        showToast(text);
+      });
+    } else {
+      showToast(text);
+    }
+  }
+
+  /* ----- the sync moment (on Today, not on Sync) ----- */
+  function syncFlagKey(dateStr) { return "ht.syncShown." + dateStr; }
+
+  function maybeSyncMoment(dateStr, me, partner) {
+    if (dateStr !== localDate() || !partner) return;
+    if (!Pod.inSync(dateStr, me, partner)) return;
+    if (localStorage.getItem(syncFlagKey(dateStr))) return;
+    try { localStorage.setItem(syncFlagKey(dateStr), "1"); } catch (e) {}
+    playSyncMoment(me, partner);
+  }
+
+  function playSyncMoment(me, partner) {
+    var card = document.getElementById("tg-card");
+    if (card) card.classList.add("synced");
+
+    var bloom = document.createElement("div");
+    bloom.className = "sync-bloom";
+    bloom.setAttribute("aria-hidden", "true");
+    document.body.appendChild(bloom);
+
+    var drop = document.createElement("div");
+    drop.className = "sync-drop glass";
+    drop.setAttribute("role", "status");
+    drop.innerHTML = '<span class="sd-avatars">' + avatarHTML(me, 26) + avatarHTML(partner, 26) + "</span>" +
+      "<span>You're in sync today</span>";
+    document.body.appendChild(drop);
+
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        bloom.classList.add("go");
+        drop.classList.add("go");
+      });
+    });
+    setTimeout(function () {
+      drop.classList.remove("go");
+      setTimeout(function () {
+        drop.remove();
+        bloom.remove();
+      }, 600);
+    }, 3200);
+  }
+
+  /* ----- tiles ----- */
+  function waterLabel(habit, val, me, partner) {
+    var target = habit.targets[me];
+    var s = "Water: " + val + " of " + target + " glasses.";
+    if (partner) {
+      var pVal = Data.value(viewedDate(), partner, habit.id);
+      s += " " + Store.personName(partner) + ": " +
+        ((pVal === undefined || pVal === null) ? "not yet" : pVal + " of " + habit.targets[partner]) + ".";
+    }
+    return s + " Tap to log one glass. Long press to set an exact amount.";
+  }
+
+  function waterTile(habit, dateStr, me, partner) {
     var target = habit.targets[me];
     var val = Data.value(dateStr, me, habit.id) || 0;
-    var pVal = Data.value(dateStr, partner, habit.id);
-    var pct = Math.min(val / target, 1) * 100;
-    var pText = (pVal === undefined || pVal === null)
-      ? '<span class="pval" style="color:var(--ink-30)">--</span>'
-      : '<span class="pval num">' + pVal + "/" + habit.targets[partner] + "</span>";
-
-    return '<div class="habit-row" data-habit="water" style="--tint:' + TINTS.water + '">' +
-      '<div class="row-main">' +
-      '<p class="habit-name">Water</p>' +
-      '<p class="habit-sub">Target ' + target + " glasses</p>" +
-      '<button class="liquid-wrap" aria-label="Log a glass of water. Long press to set an exact amount.">' +
-      '<span class="liquid-fill" style="height:' + pct + '%"></span>' +
-      '<span class="big-num num"><span class="js-wval">' + val + "</span><small>/" + target + "</small></span>" +
-      "</button>" +
-      '<p class="tap-hint">Tap +1 &middot; long-press to set</p>' +
-      "</div>" + partnerCell(partner, pText) + "</div>";
+    var pVal = partner ? Data.value(dateStr, partner, habit.id) : undefined;
+    var pText = (pVal === undefined || pVal === null) ? "not yet" : pVal + "/" + habit.targets[partner];
+    var pct = Math.min(val / target, 1);
+    var done = val >= target;
+    return '<button class="tile tile-water' + (done ? " has-badge" : "") + '" data-habit="water" style="--tint:' + TINTS.water + '" aria-label="' + esc(waterLabel(habit, val, me, partner)) + '">' +
+      '<span class="t-liquid" aria-hidden="true"><span class="t-liquid-fill js-wfill" style="height:' + (6 + 60 * pct) + '%">' +
+      waveSVG("rgba(140,220,255,0.9)", "wfill") +
+      '<i class="bub b1"></i><i class="bub b2"></i><i class="bub b3"></i><i class="bub b4"></i>' +
+      "</span></span>" +
+      '<span class="t-top"><span class="t-label deep-water">' + ICONS.water + "Water</span>" +
+      (partner ? chipHTML(partner, pText) : "") + "</span>" +
+      '<span class="t-bottom"><span class="w-num num"><span class="js-wval">' + val + "</span><small> / " + target + "</small></span>" +
+      '<span class="t-cap">glasses &middot; tap to pour</span></span>' +
+      '<span class="t-check js-wcheck' + (done ? "" : " hidden") + '" aria-hidden="true">' + ICONS.badge + "</span>" +
+      "</button>";
   }
 
-  function stepsRow(habit, dateStr, me, partner) {
+  function paintWater(tileEl, habit, val) {
+    var me = Store.get("person");
+    var target = habit.targets[me];
+    tileEl.querySelector(".js-wval").textContent = val;
+    tileEl.querySelector(".js-wfill").style.height = (6 + 60 * Math.min(val / target, 1)) + "%";
+    var badge = tileEl.querySelector(".js-wcheck");
+    var done = val >= target;
+    tileEl.classList.toggle("has-badge", done);
+    if (done && badge.classList.contains("hidden")) {
+      badge.classList.remove("hidden", "pop");
+      void badge.offsetWidth;
+      badge.classList.add("pop");
+    } else if (!done) {
+      badge.classList.add("hidden");
+      badge.classList.remove("pop");
+    }
+    tileEl.setAttribute("aria-label", waterLabel(habit, val, me, Store.partnerId()));
+  }
+
+  function floatOne(tileEl, e) {
+    var r = tileEl.getBoundingClientRect();
+    var x = e && e.clientX ? (e.clientX - r.left) : r.width / 2;
+    var s = document.createElement("span");
+    s.className = "float1 num";
+    s.textContent = "+1";
+    s.style.left = Math.max(8, Math.min(r.width - 40, x - 12)) + "px";
+    s.style.top = "46%";
+    tileEl.appendChild(s);
+    s.addEventListener("animationend", function () { s.remove(); });
+  }
+
+  function weekCount(habit, dateStr, personId) {
+    var monday = mondayOf(dateStr);
+    var n = 0;
+    for (var i = 0; i < 7; i++) {
+      if (Data.value(addDays(monday, i), personId, habit.id)) n++;
+    }
+    return n;
+  }
+
+  function exerciseLabel(habit, n, me, partner) {
+    var target = habit.targets[me];
+    var s = "Exercise: " + n + " of " + target + " this week.";
+    if (partner) s += " " + Store.personName(partner) + ": " + weekCount(habit, viewedDate(), partner) + " of " + habit.targets[partner] + ".";
+    return s + " Tap to toggle today. Long press to edit the week.";
+  }
+
+  function exerciseTile(habit, dateStr, me, partner) {
+    var target = habit.targets[me];
+    var n = weekCount(habit, dateStr, me);
+    var pn = partner ? weekCount(habit, dateStr, partner) : 0;
+    var vials = "";
+    for (var i = 0; i < target; i++) vials += '<span class="vial"><i></i></span>';
+    return '<button class="tile tile-ex" data-habit="exercise" style="--tint:' + TINTS.exercise + '" aria-label="' + esc(exerciseLabel(habit, n, me, partner)) + '">' +
+      '<span class="t-top"><span class="t-label deep-exercise">' + ICONS.exercise + "Exercise</span>" +
+      (partner ? chipHTML(partner, pn + "/" + habit.targets[partner]) : "") + "</span>" +
+      '<span class="x-num num"><span class="js-xval">' + n + "</span><small> / " + target + "</small></span>" +
+      '<span class="t-cap">this week</span>' +
+      '<span class="vials js-vials" aria-hidden="true">' + vials + "</span>" +
+      "</button>";
+  }
+
+  function paintVials(tileEl, n, target) {
+    var filled = Math.min(n, target);
+    tileEl.querySelectorAll(".vial").forEach(function (v, i) {
+      // rAF so the CSS transition plays from empty on first paint too.
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () { v.classList.toggle("on", i < filled); });
+      });
+    });
+  }
+
+  function paintExercise(tileEl, habit, n) {
+    tileEl.querySelector(".js-xval").textContent = n;
+    paintVials(tileEl, n, habit.targets[Store.get("person")]);
+    tileEl.setAttribute("aria-label", exerciseLabel(habit, n, Store.get("person"), Store.partnerId()));
+  }
+
+  function stepsLabel(habit, val, me, partner) {
+    var s = "Steps: " + fmtSteps(val) + " of " + Number(habit.targets[me]).toLocaleString() + " goal.";
+    if (partner) {
+      var pVal = Data.value(viewedDate(), partner, habit.id);
+      s += " " + Store.personName(partner) + ": " + ((pVal === undefined || pVal === null) ? "not yet" : fmtSteps(pVal)) + ".";
+    }
+    return s + " Tap to log steps.";
+  }
+
+  function trailSVG(progress) {
+    var off = (100 * (1 - Math.min(progress, 1))).toFixed(1);
+    return '<svg class="trail" viewBox="0 0 140 64" aria-hidden="true">' +
+      '<defs><linearGradient id="trail-g" x1="0" y1="0" x2="1" y2="0">' +
+      '<stop offset="0" stop-color="#30D158"/><stop offset="1" stop-color="#63E6BE"/>' +
+      "</linearGradient></defs>" +
+      '<path d="M8 52 C 36 52, 36 12, 70 12 S 104 52, 132 52" pathLength="100" fill="none" ' +
+      'stroke="url(#trail-g)" stroke-width="6" stroke-linecap="round" stroke-dasharray="100" ' +
+      'stroke-dashoffset="' + off + '" class="js-trail"/></svg>';
+  }
+
+  function stepsTile(habit, dateStr, me, partner) {
     var target = habit.targets[me];
     var val = Data.value(dateStr, me, habit.id);
-    var pVal = Data.value(dateStr, partner, habit.id);
-    var shown = (val === undefined || val === null) ? "--" : Number(val).toLocaleString();
-    var pText = (pVal === undefined || pVal === null)
-      ? '<span class="pval" style="color:var(--ink-30)">--</span>'
-      : '<span class="pval num">' + Number(pVal).toLocaleString() + "</span>";
-
-    return '<div class="habit-row" data-habit="steps" style="--tint:' + TINTS.steps + '">' +
-      '<div class="row-main">' +
-      '<p class="habit-name">Steps</p>' +
-      '<p class="habit-sub">Target ' + Number(target).toLocaleString() + "</p>" +
-      '<div class="big-num num js-sval" role="button" tabindex="0" aria-label="Log steps">' + shown + "</div>" +
-      '<p class="tap-hint">Tap to enter</p>' +
-      "</div>" + partnerCell(partner, pText) + "</div>";
+    var pVal = partner ? Data.value(dateStr, partner, habit.id) : undefined;
+    var pText = (pVal === undefined || pVal === null) ? "not yet" : fmtSteps(pVal);
+    var progress = (val === undefined || val === null) ? 0 : Math.min(val / target, 1);
+    return '<button class="tile tile-steps" data-habit="steps" style="--tint:' + TINTS.steps + '" aria-label="' + esc(stepsLabel(habit, val, me, partner)) + '">' +
+      '<span class="t-top"><span class="t-label deep-steps">' + ICONS.steps + "Steps</span>" +
+      (partner ? chipHTML(partner, pText) : "") + "</span>" +
+      '<span class="s-num num js-sval">' + fmtSteps(val) + "</span>" +
+      trailSVG(progress) +
+      "</button>";
   }
 
-  function exerciseRow(habit, dateStr, me, partner) {
-    var monday = mondayOf(dateStr);
-    var days = [];
-    for (var i = 0; i < 7; i++) days.push(addDays(monday, i));
-    var labels = ["M", "T", "W", "T", "F", "S", "S"];
-    var todayStr = localDate();
-    var minDate = addDays(todayStr, -MAX_BACK);
+  function paintSteps(tileEl, habit, val) {
+    var me = Store.get("person");
+    var target = habit.targets[me];
+    tileEl.querySelector(".js-sval").textContent = fmtSteps(val);
+    var progress = (val === undefined || val === null) ? 0 : Math.min(val / target, 1);
+    tileEl.querySelector(".js-trail").style.strokeDashoffset = (100 * (1 - progress)).toFixed(1);
+    tileEl.setAttribute("aria-label", stepsLabel(habit, val, me, Store.partnerId()));
+  }
 
-    function weekCount(personId) {
-      var n = 0;
-      days.forEach(function (d) {
-        if (Data.value(d, personId, habit.id)) n++;
-      });
-      return n;
+  function genericTile(habit, dateStr, me, partner) {
+    var on = !!Data.value(dateStr, me, habit.id);
+    var pOn = partner ? !!Data.value(dateStr, partner, habit.id) : false;
+    var label = esc(habit.name) + ": " + (on ? "done" : "not yet") + ". Tap to toggle.";
+    return '<button class="tile tile-generic" data-habit="' + esc(habit.id) + '" style="--tint:' + (TINTS[habit.id] || "#A259FF") + '" aria-label="' + label + '">' +
+      '<span class="t-top"><span class="t-label">' + ICONS.check + esc(habit.name) + "</span>" +
+      (partner ? chipHTML(partner, pOn ? "done" : "not yet") : "") + "</span>" +
+      '<span class="g-state num js-gstate">' + (on ? "Done" : "Not yet") + "</span>" +
+      "</button>";
+  }
+
+  function paintGeneric(tileEl, habit, val) {
+    tileEl.querySelector(".js-gstate").textContent = val ? "Done" : "Not yet";
+    tileEl.setAttribute("aria-label",
+      esc(habit.name) + ": " + (val ? "done" : "not yet") + ". Tap to toggle.");
+  }
+
+  function tilesHTML(habits, dateStr, me, partner) {
+    var order = ["water", "exercise", "steps"];
+    var sorted = habits.slice().sort(function (a, b) {
+      var ai = order.indexOf(a.id), bi = order.indexOf(b.id);
+      return (ai < 0 ? 99 : ai) - (bi < 0 ? 99 : bi);
+    });
+    return sorted.map(function (h) {
+      if (h.id === "water") return waterTile(h, dateStr, me, partner);
+      if (h.id === "exercise") return exerciseTile(h, dateStr, me, partner);
+      if (h.id === "steps") return stepsTile(h, dateStr, me, partner);
+      return genericTile(h, dateStr, me, partner);
+    }).join("");
+  }
+
+  /* ----- exact water sheet (existing behavior, new tile hookup) ----- */
+  function openExactWater(habit, target, current) {
+    var step = habit.step || 1;
+    var presets = habit.presets || [2, 4, 6, 8];
+    var cur = current || 0;
+    var tileEl = document.querySelector('.tile[data-habit="water"]');
+    var s = openSheet("Water glasses", null,
+      '<div class="numrow"><span class="num js-water-num">' + cur + "</span>" +
+      '<span class="numcap">' + (cur === 1 ? "glass" : "glasses") + "</span></div>" +
+      '<div class="stepper">' +
+      '<button class="js-minus" aria-label="Drink one less">&minus;</button>' +
+      '<button class="js-plus" aria-label="Drink one more">+</button></div>' +
+      '<div class="chiprow" role="group" aria-label="Common amounts">' +
+      presets.map(function (p) { return '<button class="qchip" data-v="' + p + '">' + p + "</button>"; }).join("") +
+      "</div>" +
+      '<button class="btn js-done">Done</button>');
+    var body = s.el;
+    var num = body.querySelector(".js-water-num");
+    var cap = body.querySelector(".numcap");
+    var shown = cur;
+    function paint() {
+      num.textContent = shown;
+      cap.textContent = shown === 1 ? "glass" : "glasses";
+    }
+    body.querySelector(".js-minus").onclick = function () { if (shown > 0) { shown -= step; paint(); } };
+    body.querySelector(".js-plus").onclick = function () { shown += step; paint(); };
+    body.querySelectorAll(".qchip").forEach(function (c) {
+      c.onclick = function () { shown = Number(c.dataset.v); paint(); };
+    });
+    body.querySelector(".js-done").onclick = function () {
+      if (shown !== cur && tileEl) {
+        logTile(habit, shown, tileEl, function (v) { paintWater(tileEl, habit, v); });
+      }
+      s.close();
+    };
+  }
+
+  /* ----- exercise history sheet (long-press): seven days, edit window kept ----- */
+  function openExerciseHistory(habit, target) {
+    var me = Store.get("person");
+    var dateStr = viewedDate();
+    var monday = mondayOf(dateStr);
+    var tileEl = document.querySelector('.tile[data-habit="exercise"]');
+    var minDay = addDays(localDate(), -MAX_BACK);
+    var rows = "";
+    for (var i = 0; i < 7; i++) {
+      (function (i) {
+        var d = addDays(monday, i);
+        var done = !!Data.value(d, me, habit.id);
+        var locked = d > localDate() || d < minDay;
+        rows += '<div class="weekrow">' +
+          '<span class="weekday">' + new Date(d + "T12:00:00").toLocaleDateString([], { weekday: "long" }) + "</span>" +
+          '<button class="wtog' + (done ? " on" : "") + '"' +
+          (locked ? " disabled" : "") +
+          ' data-day="' + d + '" aria-label="' + (done ? "Mark not done" : "Mark done") + '">' +
+          (done ? ICONS.check : "+") + "</button></div>";
+      })(i);
+    }
+    var s = openSheet("Exercise this week", null, '<div class="weeklist">' + rows + "</div>");
+    s.el.querySelectorAll(".wtog").forEach(function (btn) {
+      btn.onclick = function () {
+        var d = btn.dataset.day;
+        var was = !!Data.value(d, me, habit.id);
+        var val = was ? 0 : 1;
+        var nPrev = weekCount(habit, viewedDate(), me);
+        var n = nPrev + (val ? 1 : -1);
+        if (tileEl) {
+          logTile(habit, val, tileEl, function (v) {
+            if (d === viewedDate()) paintExercise(tileEl, habit, v ? n : nPrev);
+          }, d);
+        }
+        btn.classList.toggle("on", !!val);
+        btn.setAttribute("aria-label", val ? "Mark not done" : "Mark done");
+        btn.innerHTML = val ? ICONS.check : "+";
+      };
+    });
+    void target;
+  }
+
+  /* ----- steps sheet ----- */
+  function openStepsSheet(habit, target, current) {
+    var cur = current || 0;
+    var tileEl = document.querySelector('.tile[data-habit="steps"]');
+    var shown = cur;
+    var s = openSheet("Steps", null,
+      '<div class="numrow"><span class="num js-steps-num">' + cur.toLocaleString() + "</span>" +
+      '<span class="numcap">steps</span></div>' +
+      '<div class="chiprow" role="group" aria-label="Quick add">' +
+      '<button class="qchip" data-add="1000">+1k</button>' +
+      '<button class="qchip" data-add="2500">+2.5k</button>' +
+      '<button class="qchip" data-add="-1000">&minus;1k</button>' +
+      '<button class="qchip" data-set="' + target + '">Goal</button>' +
+      '<button class="qchip" data-set="0">Done</button>' +
+      "</div>" +
+      '<button class="linkbtn js-exact-toggle">Enter exact number.</button>' +
+      '<div class="exactrow hidden">' +
+      '<input class="exactinput" type="number" inputmode="numeric" min="0" placeholder="e.g. 7500" aria-label="Exact step count">' +
+      '<button class="btn js-exact-set">Set</button></div>' +
+      '<button class="btn js-done">Done</button>');
+    var body = s.el;
+    var num = body.querySelector(".js-steps-num");
+    function paint() { num.textContent = shown.toLocaleString(); }
+    function write(v) {
+      if (v < 0 || v === shown || !tileEl) return;
+      shown = v;
+      paint();
+      logTile(habit, shown, tileEl, function (nv) { paintSteps(tileEl, habit, nv); });
+      s.close();
+    }
+    body.querySelectorAll(".qchip").forEach(function (c) {
+      c.onclick = function () {
+        if (c.dataset.add) write(shown + Number(c.dataset.add));
+        else write(Number(c.dataset.set));
+      };
+    });
+    body.querySelector(".js-exact-toggle").onclick = function () {
+      body.querySelector(".exactrow").classList.toggle("hidden");
+    };
+    body.querySelector(".js-exact-set").onclick = function () {
+      var v = Number(body.querySelector(".exactinput").value);
+      if (!Number.isFinite(v) || v < 0) return;
+      write(Math.round(v));
+    };
+    body.querySelector(".js-done").onclick = function () { s.close(); };
+  }
+
+  /* ----- tile interactions ----- */
+
+  // A long-press opens a sheet while the finger is still down. Releasing the
+  // finger then fires a click on whatever the sheet put under it, which could
+  // toggle a control by accident. Swallow that one synthetic click.
+  function swallowReleaseClick() {
+    function onClick(e) {
+      document.removeEventListener("click", onClick, true);
+      clearTimeout(safety);
+      e.stopPropagation();
+      e.preventDefault();
+    }
+    var safety = setTimeout(function () {
+      document.removeEventListener("click", onClick, true);
+    }, 10000);
+    document.addEventListener("click", onClick, true);
+  }
+
+  function bindTile(el, habit) {
+    var press = { timer: null, long: false, x: 0, y: 0, id: null };
+
+    function armLongPress(fn) {
+      press.long = false;
+      clearTimeout(press.timer);
+      press.timer = setTimeout(function () {
+        press.long = true;
+        swallowReleaseClick();
+        fn();
+        el.classList.remove("pressing");
+      }, 500);
+    }
+    function clearPress() {
+      clearTimeout(press.timer);
+      el.classList.remove("pressing");
     }
 
-    var dots = days.map(function (d, i) {
-      var done = !!Data.value(d, me, habit.id);
-      var editable = d >= minDate && d <= todayStr;
-      var cls = "day-dot" + (done ? " done" : "") + (d === todayStr ? " today" : "") + (editable ? "" : " locked");
-      return '<button class="' + cls + '" data-date="' + d + '"' + (editable ? "" : " disabled") +
-        ' aria-label="' + labels[i] + (done ? ", done" : "") + '">' + labels[i] +
-        '<span class="dot"></span></button>';
-    }).join("");
-
-    var n = weekCount(me);
-    var pn = weekCount(partner);
-    var pText = '<span class="pval num">' + pn + "/4</span>";
-
-    return '<div class="habit-row" data-habit="exercise" style="--tint:' + TINTS.exercise + '">' +
-      '<div class="row-main">' +
-      '<p class="habit-name">Exercise</p>' +
-      '<p class="habit-sub"><span class="num js-xval">' + n + "</span>/4 this week &middot; target 3</p>" +
-      '<div class="week-dots">' + dots + "</div>" +
-      "</div>" + partnerCell(partner, pText) + "</div>";
-  }
-
-  /* ----- sheets ----- */
-  function waterSheet(habit, dateStr, me, rowEl) {
-    var target = habit.targets[me];
-    var startVal = Data.value(dateStr, me, habit.id) || 0;
-    var val = startVal;
-    var s = openSheet("Water", "Set your glasses for " + dateLabel().toLowerCase() + ".",
-      '<div class="stepper">' +
-      '<button id="ws-dec" aria-label="One less">-</button>' +
-      '<span class="step-val num" id="ws-val">' + val + "</span>" +
-      '<button id="ws-inc" aria-label="One more">+</button>' +
-      "</div>" +
-      '<div class="sheet-row"><button class="btn" id="ws-save">Save</button></div>');
-
-    function draw() { s.el.querySelector("#ws-val").textContent = val; }
-    s.el.querySelector("#ws-dec").addEventListener("click", function () { val = Math.max(0, val - 1); draw(); });
-    s.el.querySelector("#ws-inc").addEventListener("click", function () { val = Math.min(99, val + 1); draw(); });
-    s.el.querySelector("#ws-save").addEventListener("click", function () {
-      s.close();
-      if (val === startVal) return;
-      var prev = startVal;
-      commit(dateStr, me, habit.id, val, prev,
-        function () { paintWater(rowEl, habit, val); },
-        function () { paintWater(rowEl, habit, prev); },
-        rowEl);
+    el.addEventListener("pointerdown", function (e) {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      el.classList.add("pressing");
+      press.x = e.clientX; press.y = e.clientY; press.id = e.pointerId;
+      if (habit.id === "water") {
+        armLongPress(function () {
+          var me = Store.get("person");
+          openExactWater(habit, habit.targets[me], Data.value(viewedDate(), me, habit.id) || 0);
+        });
+      } else if (habit.id === "exercise") {
+        armLongPress(function () {
+          openExerciseHistory(habit, habit.targets[Store.get("person")]);
+        });
+      }
     });
+    el.addEventListener("pointermove", function (e) {
+      if (press.id !== e.pointerId) return;
+      if (Math.hypot(e.clientX - press.x, e.clientY - press.y) > 10) clearTimeout(press.timer);
+    });
+    el.addEventListener("pointerup", function (e) {
+      clearPress();
+      if (press.long || press.id !== e.pointerId) return;
+      activateTile(el, habit, e);
+    });
+    el.addEventListener("pointercancel", clearPress);
+    el.addEventListener("pointerleave", function () { el.classList.remove("pressing"); });
+    el.addEventListener("keydown", function (e) {
+      if (e.key !== "Enter" && e.key !== " ") return;
+      e.preventDefault();
+      activateTile(el, habit, e);
+    });
+    el.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+
+    if (habit.id === "exercise") {
+      paintVials(el, weekCount(habit, viewedDate(), Store.get("person")), habit.targets[Store.get("person")]);
+    }
   }
 
-  function paintWater(rowEl, habit, val) {
-    var target = habit.targets[Store.get("person")];
-    rowEl.querySelector(".js-wval").textContent = val;
-    rowEl.querySelector(".liquid-fill").style.height = Math.min(val / target, 1) * 100 + "%";
-  }
-
-  function stepsSheet(habit, dateStr, me, rowEl) {
-    var target = habit.targets[me];
-    var startVal = Data.value(dateStr, me, habit.id);
-    var s = openSheet("Steps", "Target " + Number(target).toLocaleString() + " for " + dateLabel().toLowerCase() + ".",
-      '<input type="number" id="ss-input" inputmode="numeric" min="0" max="999999" value="' +
-      (startVal === undefined || startVal === null ? "" : startVal) + '" placeholder="0" aria-label="Step count">' +
-      '<div class="chips">' +
-      '<button class="chip" data-add="1000">+1,000</button>' +
-      '<button class="chip" data-add="2500">+2,500</button>' +
-      '<button class="chip" data-set="target">Hit target</button>' +
-      "</div>" +
-      '<div class="sheet-row"><button class="btn" id="ss-save">Save</button></div>');
-
-    var input = s.el.querySelector("#ss-input");
-    s.el.querySelectorAll(".chip").forEach(function (c) {
-      c.addEventListener("click", function () {
-        var cur = parseInt(input.value, 10) || 0;
-        if (c.getAttribute("data-set") === "target") input.value = target;
-        else input.value = cur + parseInt(c.getAttribute("data-add"), 10);
-        input.focus();
+  function activateTile(el, habit, e) {
+    var me = Store.get("person");
+    var d = viewedDate();
+    if (habit.id === "water") {
+      var prev = Data.value(d, me, habit.id) || 0;
+      var val = prev + (habit.step || 1);
+      logTile(habit, val, el, function (v) {
+        paintWater(el, habit, v);
+        if (v === val) floatOne(el, e);
       });
-    });
-    s.el.querySelector("#ss-save").addEventListener("click", function () {
-      var raw = input.value.trim();
-      s.close();
-      var val = raw === "" ? null : Math.max(0, parseInt(raw, 10) || 0);
-      var prev = (startVal === undefined) ? null : startVal;
-      var next = (val === null) ? null : val;
-      var prevCmp = (prev === null) ? null : prev;
-      if (next === prevCmp) return;
-      commit(dateStr, me, habit.id, next === null ? undefined : next, prev === null ? undefined : prev,
-        function () { paintSteps(rowEl, next); },
-        function () { paintSteps(rowEl, prev); },
-        rowEl);
-    });
-    setTimeout(function () { input.focus(); }, 350);
+      return;
+    }
+    if (habit.id === "exercise") {
+      var was = !!Data.value(d, me, habit.id);
+      var xval = was ? 0 : 1;
+      var nPrev = weekCount(habit, d, me);
+      var n = nPrev + (xval ? 1 : -1);
+      logTile(habit, xval, el, function (v) { paintExercise(el, habit, v ? n : nPrev); });
+      return;
+    }
+    if (habit.id === "steps") {
+      openStepsSheet(habit, habit.targets[me], Data.value(d, me, habit.id) || 0);
+      return;
+    }
+    var gwas = !!Data.value(d, me, habit.id);
+    var gval = gwas ? 0 : 1;
+    logTile(habit, gval, el, function (v) { paintGeneric(el, habit, v); });
   }
 
-  function paintSteps(rowEl, val) {
-    rowEl.querySelector(".js-sval").textContent =
-      (val === null || val === undefined) ? "--" : Number(val).toLocaleString();
+  /* ----- header ----- */
+  function headerHTML(dateStr, me, partner) {
+    var past = dateStr !== localDate();
+    var title = past ? dateLabel() : "Today";
+    return '<div class="top-row">' +
+      '<div class="date-nav">' +
+      '<button class="dnav" data-nav="-1" aria-label="Previous day"' + (dateOffset <= -MAX_BACK ? " disabled" : "") + ">&#8249;</button>" +
+      '<span class="top-date">' + esc(fullDateLabel()) + "</span>" +
+      '<button class="dnav" data-nav="1" aria-label="Next day"' + (dateOffset >= 0 ? " disabled" : "") + ">&#8250;</button>" +
+      "</div>" +
+      (partner
+        ? '<div class="pair-capsule glass" aria-label="You and ' + esc(Store.personName(partner)) + '">' +
+          '<span class="pair-pair">' + avatarHTML(me, 30) + avatarHTML(partner, 30) + "</span></div>"
+        : '<div class="pair-capsule glass" aria-label="Just you">' + avatarHTML(me, 30) + "</div>") +
+      "</div>" +
+      '<div class="title-block"' + enterCls(1) + enterDelay(1) + ">" +
+      '<h1 class="screen-title">' + esc(title) + "</h1>" +
+      '<div class="greeting">' + esc(greeting()) + "</div>" +
+      (past ? '<button class="back-pill glass" id="back-today">Back to today</button>' : "") +
+      "</div>";
+  }
+
+  function habitsHeadHTML(partner) {
+    return '<div class="habits-head"' + enterCls(3) + enterDelay(3) + ">" +
+      '<h2 class="habits-title">Habits</h2>' +
+      (partner ? '<div class="habits-corner">' + esc(Store.personName(partner)) + " in the corner</div>" : "") +
+      "</div>";
   }
 
   /* ----- render ----- */
-  function headerHTML() {
-    return '<div class="today-header" id="today-header">' +
-      '<div class="title-row"><h1>' + esc(dateLabel()) + "</h1>" +
-      '<div class="date-nav">' +
-      '<button id="dn-back" aria-label="Previous day"' + (dateOffset <= -MAX_BACK ? " disabled" : "") + ">&#8249;</button>" +
-      '<button id="dn-fwd" aria-label="Next day"' + (dateOffset >= 0 ? " disabled" : "") + ">&#8250;</button>" +
-      "</div></div>" +
-      '<p class="dateline">' + esc(fullDateLabel()) + "</p></div>";
-  }
-
-  function summaryHTML(dateStr, me, partner) {
-    var myFrac = dayFraction(dateStr, me);
-    var pFrac = dayFraction(dateStr, partner);
-    return '<button class="summary-strip glass" id="summary-strip" aria-label="Open the pod view">' +
-      '<span class="rings">' + ringSVG(myFrac, Store.personColor(me)) + ringSVG(pFrac, Store.personColor(partner)) + "</span>" +
-      '<span><span class="who">You and ' + esc(Store.personName(partner)) + "</span><br>" +
-      '<span class="sub">Tap for the pod view</span></span></button>';
-  }
-
   function render() {
-    root = document.getElementById("today-root");
-    if (!root || !Store.get("habits")) return;
-    var dateStr = viewedDate();
+    var root = document.getElementById("today-root");
     var me = Store.get("person");
+    var habitsDoc = Store.get("habits");
+    if (!root || !me || !habitsDoc) return;
+    var dateStr = viewedDate();
     var partner = Store.partnerId();
-    var habits = Store.get("habits").habits;
+    var habitList = habitsDoc.habits;
 
-    root.classList.toggle("controls-off", !navigator.onLine);
-    root.innerHTML = headerHTML() + '<div id="today-body"></div>';
-    var body = document.getElementById("today-body");
+    root.innerHTML =
+      headerHTML(dateStr, me, partner) +
+      togetherHTML(dateStr, me, partner) +
+      habitsHeadHTML(partner) +
+      '<div class="tile-grid"' + enterCls(4) + enterDelay(4) + ">" + tilesHTML(habitList, dateStr, me, partner) + "</div>" +
+      '<button class="add-habit glass js-add-habit"' + enterCls(5) + enterDelay(5) + ' aria-label="Add a habit">' +
+      ICONS.plus + "<span>Add Habit</span></button>";
 
-    document.getElementById("dn-back").addEventListener("click", function () {
-      if (dateOffset > -MAX_BACK) { dateOffset--; render(); }
+    root.querySelectorAll(".dnav").forEach(function (b) {
+      b.addEventListener("click", function () { setDay(dateOffset + Number(b.dataset.nav)); });
     });
-    document.getElementById("dn-fwd").addEventListener("click", function () {
-      if (dateOffset < 0) { dateOffset++; render(); }
-    });
+    var backBtn = document.getElementById("back-today");
+    if (backBtn) backBtn.addEventListener("click", function () { setDay(0); });
 
-    // My check-in for the viewed date, partner's for the viewed date,
-    // plus the full week for exercise dots (both people).
-    var monday = mondayOf(dateStr);
-    var fetches = [
-      Data.fetchCheckin(dateStr, me),
-      partner ? Data.fetchCheckin(dateStr, partner) : Promise.resolve({})
-    ];
-    for (var i = 0; i < 7; i++) {
-      fetches.push(Data.fetchCheckin(addDays(monday, i), me));
-      if (partner) fetches.push(Data.fetchCheckin(addDays(monday, i), partner));
-    }
-
-    Promise.all(fetches).then(function () {
-      var html = summaryHTML(dateStr, me, partner);
-      habits.forEach(function (h) {
-        if (h.id === "water") html += waterRow(h, dateStr, me, partner);
-        else if (h.id === "steps") html += stepsRow(h, dateStr, me, partner);
-        else if (h.id === "exercise") html += exerciseRow(h, dateStr, me, partner);
-        else html += genericRow(h, dateStr, me, partner);
-      });
-      body.innerHTML = html;
-      wire(dateStr, me, partner);
-    }).catch(function () {
-      body.innerHTML = '<div class="load-error"><p>Couldn\'t load your data. Check your connection.</p>' +
-        '<button class="btn" id="today-retry">Retry</button></div>';
-      document.getElementById("today-retry").addEventListener("click", render);
-    });
-  }
-
-  function genericRow(habit, dateStr, me, partner) {
-    var on = !!Data.value(dateStr, me, habit.id);
-    var pOn = !!Data.value(dateStr, partner, habit.id);
-    return '<div class="habit-row" data-habit="' + esc(habit.id) + '" style="--tint:' + (TINTS[habit.id] || "#A259FF") + '">' +
-      '<div class="row-main">' +
-      '<p class="habit-name">' + esc(habit.name) + "</p>" +
-      '<p class="habit-sub">' + (on ? "Done" : "Not yet") + "</p>" +
-      "</div>" +
-      partnerCell(partner, '<span class="pval">' + (pOn ? "Done" : "--") + "</span>") + "</div>";
-  }
-
-  function wire(dateStr, me, partner) {
-    document.getElementById("summary-strip").addEventListener("click", function () {
-      if (window.App) window.App.showTab("pod");
+    root.querySelectorAll(".tile").forEach(function (el) {
+      var habit = habitList.filter(function (h) { return h.id === el.dataset.habit; })[0];
+      if (habit) bindTile(el, habit);
     });
 
-    // Water: tap = +1, long-press = quick set.
-    var wRow = root.querySelector('[data-habit="water"]');
-    if (wRow) {
-      var habit = habitById("water");
-      var tapArea = wRow.querySelector(".liquid-wrap");
-      var pressTimer = null;
-      var longPressed = false;
-      tapArea.addEventListener("pointerdown", function () {
-        longPressed = false;
-        pressTimer = setTimeout(function () {
-          longPressed = true;
-          waterSheet(habit, dateStr, me, wRow);
-        }, 550);
-      });
-      ["pointerup", "pointerleave", "pointercancel"].forEach(function (ev) {
-        tapArea.addEventListener(ev, function () { clearTimeout(pressTimer); });
-      });
-      tapArea.addEventListener("click", function () {
-        if (longPressed) return;
-        var prev = Data.value(dateStr, me, habit.id) || 0;
-        var next = prev + 1;
-        commit(dateStr, me, habit.id, next, prev,
-          function () { paintWater(wRow, habit, next); },
-          function () { paintWater(wRow, habit, prev); },
-          wRow);
-      });
-    }
+    var nudgeBtn = document.getElementById("nudge-btn");
+    if (nudgeBtn) nudgeBtn.addEventListener("click", nudge);
 
-    // Steps: tap opens the sheet.
-    var sRow = root.querySelector('[data-habit="steps"]');
-    if (sRow) {
-      var sHabit = habitById("steps");
-      var open = function () { stepsSheet(sHabit, dateStr, me, sRow); };
-      sRow.querySelector(".js-sval").addEventListener("click", open);
-      sRow.querySelector(".js-sval").addEventListener("keydown", function (e) {
-        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(); }
-      });
-    }
+    var addBtn = root.querySelector(".js-add-habit");
+    if (addBtn) addBtn.addEventListener("click", function () {
+      if (window.Manage && typeof Manage.addSheet === "function") Manage.addSheet();
+    });
 
-    // Exercise: dots toggle their date (within the 2-day window).
-    var xRow = root.querySelector('[data-habit="exercise"]');
-    if (xRow) {
-      var xHabit = habitById("exercise");
-      xRow.querySelectorAll(".day-dot:not(.locked)").forEach(function (dotBtn) {
-        dotBtn.addEventListener("click", function () {
-          var d = dotBtn.getAttribute("data-date");
-          var prev = Data.value(d, me, xHabit.id);
-          var next = prev ? undefined : true;
-          var wasDone = dotBtn.classList.contains("done");
-          commit(d, me, xHabit.id, next, prev,
-            function () {
-              dotBtn.classList.toggle("done", !wasDone);
-              var nEl = xRow.querySelector(".js-xval");
-              nEl.textContent = parseInt(nEl.textContent, 10) + (wasDone ? -1 : 1);
-            },
-            function () {
-              dotBtn.classList.toggle("done", wasDone);
-              var nEl = xRow.querySelector(".js-xval");
-              nEl.textContent = parseInt(nEl.textContent, 10) + (wasDone ? 1 : -1);
-            },
-            xRow);
+    if (firstRender) {
+      root.querySelectorAll(".press-in").forEach(function (el) {
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () { el.classList.add("in"); });
         });
       });
+      firstRender = false;
     }
 
-    // Generic check habits: whole row toggles.
-    root.querySelectorAll(".habit-row").forEach(function (row) {
-      var id = row.getAttribute("data-habit");
-      if (id === "water" || id === "steps" || id === "exercise") return;
-      var habit = habitById(id);
-      row.style.cursor = "pointer";
-      row.addEventListener("click", function () {
-        var prev = Data.value(dateStr, me, id);
-        var next = prev ? undefined : true;
-        commit(dateStr, me, id, next, prev, render, render, row);
-      });
-    });
+    // Foreground case: the day became synced elsewhere and the moment has
+    // not shown on this device yet. The per-day flag keeps it to once.
+    maybeSyncMoment(dateStr, me, partner);
   }
 
-  function refreshOffline() {
-    if (root) root.classList.toggle("controls-off", !navigator.onLine);
-  }
-
-  function onScroll() {
-    var scr = document.getElementById("screen-today");
-    if (!scr || scr.classList.contains("hidden")) return;
-    var h = document.getElementById("today-header");
-    if (h) h.classList.toggle("compact", window.scrollY > 48);
-  }
-
+  /* ----- init ----- */
   function init() {
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("online", refreshOffline);
-    window.addEventListener("offline", refreshOffline);
+    render();
   }
 
   return {
     init: init,
     render: render,
-    refreshOffline: refreshOffline,
     habitMet: habitMet,
     dayFraction: dayFraction,
     ringSVG: ringSVG
