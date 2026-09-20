@@ -194,6 +194,8 @@ button { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent
 }
 /* Show the band only with the tab shell (hidden during onboarding / load error). */
 body:has(#tabbar:not(.hidden)) #statusbar-band { display: block; }
+/* During onboarding, paint the dark scene under the status bar (light mode fix). */
+body:has(#screen-onboarding:not(.hidden)) { background: #0C0B14; }
 
 .screen {
   padding: max(8px, calc(58px - env(safe-area-inset-top))) 16px calc(128px + env(safe-area-inset-bottom));
@@ -585,7 +587,7 @@ body:has(#tabbar:not(.hidden)) #statusbar-band { display: block; }
 }
 
 /* Together card */
-.together-card { border-radius: 28px; padding: 14px 16px 12px; display: flex; flex-direction: column; gap: 10px; }
+.together-card { border-radius: 28px; padding: 10px 16px 8px; display: flex; flex-direction: column; gap: 8px; }
 .tg-head { display: flex; align-items: center; justify-content: space-between; line-height: 1.4; }
 .tg-label { font-size: 13px; font-weight: 600; letter-spacing: 0.02em; color: var(--ink-60); }
 .tg-status { font-size: 13px; font-weight: 600; color: var(--ink-30); }
@@ -688,7 +690,7 @@ body:has(#tabbar:not(.hidden)) #statusbar-band { display: block; }
 }
 
 /* Habits heading */
-.habits-head { display: flex; align-items: baseline; justify-content: space-between; padding: 10px 4px 0; }
+.habits-head { display: flex; align-items: baseline; justify-content: space-between; padding: 6px 4px 0; }
 .habits-title { font-size: 22px; line-height: 28px; font-weight: 700; letter-spacing: -0.02em; margin: 0; }
 .habits-corner { font-size: 13px; color: var(--ink-30); }
 
