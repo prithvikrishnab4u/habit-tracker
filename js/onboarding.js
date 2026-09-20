@@ -31,18 +31,22 @@ var Onboarding = (function () {
     return displayName(id).charAt(0).toUpperCase();
   }
 
-  /* ---------- shared chrome: thin progress bar + round back button ---------- */
+  /* ---------- shared chrome: 4 progress segments + round back button ---------- */
 
-  // idx: 0..6 across welcome, install, who, hello, token, pour, done.
+  // idx: 0..5 across welcome, install, who, hello, token, pour.
+  // Welcome, pour and done show no progress header.
   function chrome(idx, backFn) {
-    var pct = Math.round((idx / 6) * 100);
+    if (idx === 0) return "";
+    var segs = "";
+    for (var i = 1; i <= 4; i++) {
+      segs += '<span class="' + (i <= idx ? "lit" : "") + '"></span>';
+    }
     var back = backFn
-      ? '<button class="onb-back glass" id="ob-back" aria-label="Back">' +
+      ? '<button class="onb-back" id="ob-back" aria-label="Back">' +
         '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>'
-      : '<span class="onb-back-sp"></span>';
+      : "";
     return '<div class="onb-top">' + back +
-      '<div class="onb-progress" aria-hidden="true"><i style="width:' + pct + '%"></i></div>' +
-      '<span class="onb-back-sp"></span></div>';
+      '<div class="onb-segs" aria-hidden="true">' + segs + "</div></div>";
   }
 
   function wireBack(backFn) {
@@ -50,16 +54,25 @@ var Onboarding = (function () {
     if (b && backFn) b.addEventListener("click", backFn);
   }
 
+  function bgHTML() {
+    return '<div class="onb-bg" aria-hidden="true"><i class="ob1"></i><i class="ob2"></i><i class="ob3"></i></div>';
+  }
+
   /* ---------- step 0: welcome ---------- */
 
   function showWelcome() {
     root.innerHTML =
-      '<div class="onb">' + chrome(0, null) +
-      '<div class="orbit" aria-hidden="true"><i class="o1"></i><i class="o2"></i></div>' +
-      "<h1>Two of you.<br><span class=\"grad\">One streak.</span></h1>" +
-      '<p class="lede">A habit tracker built for exactly two people. Nobody else. No feeds. Just you two, keeping each other honest.</p>' +
-      '<button class="btn" id="ob-next">Let\'s sync</button>' +
-      "</div>";
+      '<div class="onb">' + bgHTML() +
+      '<div class="onb-screen onb-welcome">' +
+      '<div class="onb-orbit" aria-hidden="true"><div class="orbit-ring">' +
+      '<span class="onb-orb o-l"><i></i></span>' +
+      '<span class="onb-orb o-r"><i></i></span>' +
+      "</div></div>" +
+      '<h1>Two of you.<br><span class="grad serif">One streak.</span></h1>' +
+      '<div class="copy"><p class="lede">A habit tracker built for <b>exactly two people</b>. Nobody else. No feeds. Just you two, keeping each other honest.</p></div>' +
+      '<button class="btn" id="ob-next"><span class="disp">Let\'s sync</span>' +
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4l8 8-8 8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>' +
+      "</div></div>";
     document.getElementById("ob-next").addEventListener("click", function () {
       // Only iOS/iPadOS needs the install gate: there, Safari and the
       // installed app do not share storage. Everywhere else the gate would
@@ -92,20 +105,31 @@ var Onboarding = (function () {
   function showInstall() {
     stopInstallWatch();
     root.innerHTML =
-      '<div class="onb">' + chrome(1, function () { stopInstallWatch(); showWelcome(); }) +
-      "<h1>First, make it a real app.</h1>" +
-      '<div class="phone-mini" aria-hidden="true">' +
-        '<div class="pm-phone"><div class="pm-icon">H</div></div>' +
-        '<div class="pm-share"><svg viewBox="0 0 24 24"><path d="M12 3v12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><path d="M7.5 7.5L12 3l4.5 4.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></div>' +
-        '<div class="pm-arrow"><svg viewBox="0 0 24 24"><path d="M12 19V5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M6 11l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div>' +
+      '<div class="onb">' + bgHTML() +
+      '<div class="onb-screen onb-install">' + chrome(1, function () { stopInstallWatch(); showWelcome(); }) +
+      '<h1>First, make it a <span class="serif">real app.</span></h1>' +
+      '<div class="onb-phone" aria-hidden="true">' +
+      '<div class="onb-appgrid">' +
+      "<span></span><span></span><span></span><span></span>" +
+      '<span class="ours"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M5 13l4 4 10-11" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>' +
+      "<span></span><span></span><span></span><span></span>" +
       "</div>" +
-      '<ol class="install-steps">' +
-        "<li>Tap the <b>Share</b> button</li>" +
-        "<li>Choose <b>Add to Home Screen</b></li>" +
-        "<li>Open <b>Habits</b> from your home screen</li>" +
-      "</ol>" +
-      '<p class="waiting"><span class="pulse-dots" aria-hidden="true"><i></i><i></i><i></i></span>See you on the home screen</p>' +
-      "</div>";
+      '<div class="onb-share"><div class="pingwrap">' +
+      '<span class="ping"></span>' +
+      '<span class="core"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><path d="M7.5 7.5L12 3l4.5 4.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></span>' +
+      "</div></div>" +
+      '<svg class="onb-arrow" viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path d="M12 19V5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M6 11l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+      "</div>" +
+      '<div class="onb-steps">' +
+      '<div class="step"><span class="n">1</span><span class="t">Tap the <b>Share</b> button</span></div>' +
+      '<div class="step"><span class="n">2</span><span class="t">Choose <b>Add to Home Screen</b></span></div>' +
+      '<div class="step"><span class="n">3</span><span class="t">Open <b>Habits</b> from your home screen</span></div>' +
+      "</div>" +
+      '<div class="onb-waiting"><div class="pill">' +
+      '<span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>' +
+      '<span class="serif">See you on the home screen</span>' +
+      "</div></div>" +
+      "</div></div>";
     wireBack(function () { stopInstallWatch(); showWelcome(); });
 
     // Advance only on real standalone detection. No continue button, no
@@ -122,16 +146,17 @@ var Onboarding = (function () {
   function showWho() {
     stopInstallWatch();
     root.innerHTML =
-      '<div class="onb">' + chrome(2, function () { viaInstall ? showInstall() : showWelcome(); }) +
-      "<h1>Who's holding this phone?</h1>" +
+      '<div class="onb">' + bgHTML() +
+      '<div class="onb-screen onb-who">' + chrome(2, function () { viaInstall ? showInstall() : showWelcome(); }) +
+      '<h1>Who\'s holding <span class="serif">this phone?</span></h1>' +
       '<div class="person-pick" role="group" aria-label="Choose person">' +
-      '<button class="person-btn" data-person="prithvi">' +
-      '<span class="avatar" style="background:' + Colors.get("blue").base + '">P</span><span>Prithvi</span></button>' +
-      '<button class="person-btn" data-person="sowmya">' +
-      '<span class="avatar" style="background:' + Colors.get("orange").base + '">S</span><span>Sowmya</span></button>' +
+      '<button class="person-btn" data-person="prithvi" aria-label="Prithvi">' +
+      '<span class="giant" aria-hidden="true">' + esc(initial("prithvi")) + '</span><span class="pname">' + esc(displayName("prithvi")) + "</span></button>" +
+      '<button class="person-btn" data-person="sowmya" aria-label="Sowmya">' +
+      '<span class="giant" aria-hidden="true">' + esc(initial("sowmya")) + '</span><span class="pname">' + esc(displayName("sowmya")) + "</span></button>" +
       "</div>" +
-      '<p class="lede">Tap yourself. This phone remembers you after this.</p>' +
-      "</div>";
+      '<p class="hint">Tap yourself. This phone remembers you after this.</p>' +
+      "</div></div>";
     wireBack(function () { viaInstall ? showInstall() : showWelcome(); });
     root.querySelectorAll(".person-btn").forEach(function (b) {
       b.addEventListener("click", function () {
@@ -154,23 +179,26 @@ var Onboarding = (function () {
     // against fresh data and bounces back here if it changed.
     var partnerColor = (note && note.partnerColor) || Colors.DEFAULTS[partner];
 
-    var body = "Pick your color. You'll spot each other by color everywhere in here.";
-
-    var html =
-      '<div class="flood" id="ob-flood" aria-hidden="true"></div>' +
-      '<div class="onb flooded">' + chrome(3, showWho) +
-      "<h1>Hey, " + esc(name) + ".</h1>" +
-      '<p class="lede">' + esc(body) + "</p>";
+    var noteText;
     if (note) {
-      var noteText = note.kind === "taken"
+      noteText = note.kind === "taken"
         ? partnerName + " picked " + Colors.get(partnerColor).name + " while you were setting up. Pick another."
         : Colors.get(colorId).name + " is too close to " + partnerName + "'s " +
           Colors.get(partnerColor).name + " for color-blind eyes. Pick another.";
-      html += '<p class="onb-note">' + esc(noteText) + "</p>";
     } else {
-      html += '<p class="onb-note">' + esc(partnerName + " is " + Colors.get(partnerColor).name + ".") + "</p>";
+      noteText = partnerName + " is " + Colors.get(partnerColor).name + ".";
     }
-    html += '<div class="liq-grid" role="group" aria-label="Choose your color">';
+
+    var html =
+      '<div class="onb">' + bgHTML() +
+      '<div class="onb-flood" id="ob-flood" aria-hidden="true"></div>' +
+      '<div class="onb-screen onb-color">' + chrome(3, showWho) +
+      '<div class="copy">' +
+      "<h1>Hey, " + esc(name) + ".</h1>" +
+      '<p class="lede">Pick your color. You\'ll spot each other by color everywhere in here.</p>' +
+      "</div>" +
+      '<div class="liq-card glass">' +
+      '<div class="liq-grid" role="group" aria-label="Choose your color">';
 
     Colors.ORDER.forEach(function (id) {
       var c = Colors.get(id);
@@ -191,7 +219,10 @@ var Onboarding = (function () {
         "</button>";
     });
 
-    html += "</div>" + '<button class="btn" id="ob-next">That\'s me</button>' + "</div>";
+    html += "</div>" + '<p class="liq-note" id="ob-note">' + esc(noteText) + "</p>" +
+      "</div>" +
+      '<button class="btn" id="ob-next"><span class="disp">That\'s me</span></button>' +
+      "</div></div>";
     root.innerHTML = html;
     wireBack(showWho);
     paintFlood(true);
@@ -225,14 +256,10 @@ var Onboarding = (function () {
     var c = Colors.get(colorId);
     f.style.backgroundColor = c.base;
     f.style.opacity = String(c.flood);
-    // The 0.50 flood opacity was chosen for white text: dark ink on the
-    // orange flood is ~2.8:1, white is ~6.6:1. The palette's dark "text"
-    // value is only for glyphs sitting directly on liquid.
-    if (root) root.style.setProperty("--flood-ink", "#fff");
     if (first) {
-      f.classList.remove("enter");
+      f.classList.remove("on");
       void f.offsetWidth;
-      f.classList.add("enter");
+      f.classList.add("on");
     }
   }
 
@@ -246,22 +273,28 @@ var Onboarding = (function () {
     var poColor = Colors.get(Store.getColorId(otherId(person))).base;
 
     root.innerHTML =
-      '<div class="onb">' + (retoken ? "" : chrome(4, function () { showHello(null); })) +
+      '<div class="onb">' + bgHTML() +
+      '<div class="onb-screen onb-token">' + (retoken ? "" : chrome(4, function () { showHello(null); })) +
+      '<div class="copy">' +
       "<h1>" + esc(title) + "</h1>" +
       '<p class="lede">Paste your key from GitHub. It stays on this phone and connects you to your shared habits.</p>' +
+      "</div>" +
       '<div class="hs-avatars" id="ob-hs" aria-hidden="true">' +
-      '<span class="hs-a" id="hs-me" style="background:' + meColor + '">' + esc(meInit) + "</span>" +
-      '<span class="hs-a" id="hs-po" style="background:' + poColor + '">' + esc(poInit) + "</span>" +
+      '<span class="hs-a me" id="hs-me" style="background:#FFFFFF;color:' + meColor + '">' + esc(meInit) + "</span>" +
+      '<span class="hs-a po" id="hs-po" style="background:' + poColor + '">' + esc(poInit) + "</span>" +
       "</div>" +
       '<p class="hs-status" id="ob-status"></p>' +
-      '<div class="token-card glass">' +
-      '<label for="ob-token">Token</label>' +
+      '<div class="fields">' +
+      '<div class="key-pill">' +
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="12" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 12h9M18 12v4M21 12v3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
       '<input id="ob-token" type="password" placeholder="Paste token here" autocomplete="off" autocapitalize="off" spellcheck="false">' +
+      '<span class="key-ok hidden" id="ob-keyok"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 13l4 4 10-11" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>' +
       "</div>" +
-      '<button class="btn" id="ob-main">Paste key</button>' +
+      "</div>" +
+      '<button class="btn" id="ob-main"><span class="disp">Paste key</span></button>' +
       '<p class="onb-error" id="ob-error"></p>' +
       '<p class="footnote">Create it in GitHub Settings, Developer settings, Personal access tokens, Fine-grained. It needs Contents read and write on the data repo only.</p>' +
-      "</div>";
+      "</div></div>";
     if (!retoken) wireBack(function () { showHello(null); });
 
     var main = document.getElementById("ob-main");
@@ -327,6 +360,12 @@ var Onboarding = (function () {
         podData = res.data;
         token = t;
         document.getElementById("ob-hs").classList.add("together");
+        var hs = document.getElementById("ob-hs");
+        if (hs && !hs.querySelector(".hs-spark")) {
+          hs.insertAdjacentHTML("beforeend", '<span class="hs-spark" aria-hidden="true"></span>');
+        }
+        var keyOk = document.getElementById("ob-keyok");
+        if (keyOk) keyOk.classList.remove("hidden");
         status.textContent = "Connected. Your habits are live.";
         mode = "shake";
         setMain("Shake on it", false);
@@ -422,18 +461,38 @@ var Onboarding = (function () {
   /* ---------- step 4: first pour ---------- */
 
   function showPour() {
+    var c = Colors.get(colorId);
+    var waveB = "M0 13 Q 16 2 32.5 13 T 65 13 T 97.5 13 T 130 13 T 162.5 13 T 195 13 T 227.5 13 T 260 13 T 292.5 13 T 325 13 T 357.5 13 T 390 13 T 422.5 13 T 455 13 T 487.5 13 T 520 13 T 552.5 13 T 585 13 T 617.5 13 T 650 13 T 682.5 13 T 715 13 T 747.5 13 T 780 13 V 32 H 0 Z";
+    var waveF = "M0 13 Q 24 0 48.75 13 T 97.5 13 T 146.25 13 T 195 13 T 243.75 13 T 292.5 13 T 341.25 13 T 390 13 T 438.75 13 T 487.5 13 T 536.25 13 T 585 13 T 633.75 13 T 682.5 13 T 731.25 13 T 780 13 V 26 H 0 Z";
+    var bubbles = "";
+    var bpos = [[12, 9, 0.2, 4.2], [28, 6, 1.4, 3.6], [45, 11, 0.8, 4.8], [62, 7, 2.1, 3.9], [78, 10, 0.5, 4.5], [90, 6, 1.8, 4.1]];
+    bpos.forEach(function (b) {
+      bubbles += '<i class="bubble" style="left:' + b[0] + "%;width:" + b[1] + "px;height:" + b[1] + "px;animation-delay:" + b[2] + "s;animation-duration:" + b[3] + 's"></i>';
+    });
+
     root.innerHTML =
-      '<div class="onb">' +
-      '<p class="onb-kicker">Last thing.</p>' +
-      "<h1>Pour your first glass.</h1>" +
-      '<button class="tumbler" id="ob-pour" aria-label="Tap the glass. It is your first check-in." style="' + Colors.liquidVars(colorId) + '">' +
-      '<span class="tumbler-fill"><svg class="liq-wave" viewBox="0 0 120 10" preserveAspectRatio="none" aria-hidden="true">' +
-      '<path d="M0 5 Q 15 1 30 5 T 60 5 T 90 5 T 120 5 T 150 5 V10 H0 Z"/></svg></span>' +
-      '<span class="tumbler-glass"></span>' +
-      "</button>" +
-      '<p class="lede">Tap the glass. It\'s your first check-in.</p>' +
+      '<div class="onb">' + bgHTML() +
+      '<div class="onb-screen onb-pour">' +
+      '<div class="copy">' +
+      '<p class="kicker">Last thing.</p>' +
+      '<h1>Pour your first <span class="serif">glass.</span></h1>' +
       "</div>" +
-      '<div class="pour-flood" id="ob-pourflood" aria-hidden="true" style="' + Colors.liquidVars(colorId) + '"><i></i><i></i><i></i><i></i><i></i><i></i></div>';
+      '<button class="tumbler-btn" id="ob-pour" aria-label="Tap the glass. It is your first check-in." style="' + Colors.liquidVars(colorId) + '">' +
+      '<span class="tumbler-cup">' +
+      '<span class="tumbler-fill"></span>' +
+      '<span class="tumbler-shine"></span>' +
+      "</span>" +
+      "</button>" +
+      '<p class="hint">Tap the glass. It\'s your first check-in.</p>' +
+      '<div class="pour-flood" id="ob-pourflood" aria-hidden="true">' +
+      '<div class="pf-waves">' +
+      '<svg class="pf-back" viewBox="0 0 780 26" preserveAspectRatio="none" aria-hidden="true"><path d="' + waveB + '" fill="' + c.base + '" fill-opacity="0.75"/></svg>' +
+      '<svg class="pf-front" viewBox="0 0 780 26" preserveAspectRatio="none" aria-hidden="true"><path d="' + waveF + '" fill="' + c.top + '"/></svg>' +
+      "</div>" +
+      '<div class="pf-body" style="background:linear-gradient(180deg,' + c.top + " 0%," + c.base + " 35%," + c.bottom + " 70%," + c.bottom + ' 100%)"></div>' +
+      '<div class="pf-bubbles">' + bubbles + "</div>" +
+      "</div>" +
+      "</div></div>";
 
     var poured = false;
     document.getElementById("ob-pour").addEventListener("click", function () {
@@ -489,16 +548,20 @@ var Onboarding = (function () {
     var poColor = Colors.get(Store.getColorId(partner)).base;
 
     root.innerHTML =
-      '<div class="onb">' +
-      '<p class="onb-kicker">and just like that,</p>' +
+      '<div class="onb">' + bgHTML() +
+      '<div class="onb-screen onb-done">' +
+      '<div class="copy">' +
+      '<p class="kicker">and just like that,</p>' +
       "<h1>You're in.</h1>" +
+      '<p class="lede">' + esc(down) + " down, " + remaining + " to go. " + esc(displayName(partner)) + " is already here.</p>" +
+      "</div>" +
       '<div class="done-avatars" aria-hidden="true">' +
-      '<span class="done-a" style="background:' + meColor + '">' + esc(initial(person)) + "</span>" +
+      '<span class="done-a" style="background:#FFFFFF;color:' + meColor + '">' + esc(initial(person)) + "</span>" +
       '<span class="done-a" style="background:' + poColor + '">' + esc(initial(partner)) + "</span>" +
       "</div>" +
-      '<p class="lede">' + esc(down) + " down, " + remaining + " to go. " + esc(displayName(partner)) + " is already here.</p>" +
-      '<button class="btn" id="ob-enter">Open Today</button>' +
-      "</div>";
+      '<button class="btn" id="ob-enter"><span class="disp">Start syncing</span>' +
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>' +
+      "</div></div>";
 
     document.getElementById("ob-enter").addEventListener("click", function () {
       Store.applyColor();
