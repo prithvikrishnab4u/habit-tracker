@@ -4,7 +4,7 @@
 
 var Pod = (function () {
   var root = null;
-  var DAYS = 30; // read window for streak math
+  var DAYS = 31; // read window: must cover the whole current month (31st needs day 1)
   var SYNC_PURPLE = "#BF5AF2";
   var TINTS = { water: "#0A84FF", exercise: "#BF5AF2", steps: "#30D158" };
 
@@ -230,7 +230,7 @@ var Pod = (function () {
         "</div>" +
         '<div class="sync-hero-chips">' +
         '<span class="hero-chip">' + esc(streakChip) + "</span>" +
-        '<span class="hero-chip">Best ' + best + "</span>" +
+        '<span class="hero-chip">Best this month ' + best + "</span>" +
         "</div>" +
         "</div>" +
         '<div class="cal-card glass" role="group" aria-label="' + esc(monthName) + ' calendar">' +
