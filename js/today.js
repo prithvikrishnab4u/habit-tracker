@@ -432,14 +432,14 @@ var Today = (function () {
     var pct = Math.min(val / target, 1);
     var done = val >= target;
     return '<button class="tile tile-water' + (done ? " has-badge" : "") + '" data-habit="water" style="--tint:' + TINTS.water + ';" aria-label="' + esc(waterLabel(habit, val, me, partner)) + '">' +
-      '<span class="t-liquid" aria-hidden="true"><span class="t-liquid-fill js-wfill" style="height:' + (6 + 60 * pct) + '%">' +
+      '<span class="t-liquid" aria-hidden="true"><span class="t-liquid-fill js-wfill" style="height:' + (6 + 54 * pct) + '%">' +
       waveSVG("var(--water-top)", "wfill") +
       '<i class="bub b1"></i><i class="bub b2"></i><i class="bub b3"></i><i class="bub b4"></i>' +
       "</span></span>" +
       '<span class="t-topgroup"><span class="t-label deep-water">' + ICONS.water + "Water</span>" +
       '<span class="w-num num"><span class="js-wval">' + val + "</span><small> / " + target + "</small></span>" +
-      '<span class="t-cap">glasses &middot; tap to pour</span></span>' +
-      (partner ? '<span class="t-foot">' + chipHTML(partner, pText) + "</span>" : "") +
+      '<span class="t-cap t-cap-pour">tap to pour</span></span>' +
+      (partner ? '<span class="t-chip-abs">' + chipHTML(partner, pText) + "</span>" : "") +
       '<span class="t-check js-wcheck' + (done ? "" : " hidden") + '" aria-hidden="true">' + ICONS.badge + "</span>" +
       "</button>";
   }
@@ -448,7 +448,7 @@ var Today = (function () {
     var me = Store.get("person");
     var target = habit.targets[me];
     tileEl.querySelector(".js-wval").textContent = val;
-    tileEl.querySelector(".js-wfill").style.height = (6 + 60 * Math.min(val / target, 1)) + "%";
+    tileEl.querySelector(".js-wfill").style.height = (6 + 54 * Math.min(val / target, 1)) + "%";
     var badge = tileEl.querySelector(".js-wcheck");
     var done = val >= target;
     tileEl.classList.toggle("has-badge", done);
@@ -551,9 +551,9 @@ var Today = (function () {
     return '<button class="tile tile-steps" data-habit="steps" style="--tint:' + TINTS.steps + '" aria-label="' + esc(stepsLabel(habit, val, me, partner)) + '">' +
       '<span class="t-top"><span class="t-label deep-steps">' + ICONS.steps + "Steps</span>" +
       (partner ? chipHTML(partner, pText, true) : "") + "</span>" +
-      '<span class="s-numrow"><span class="s-num num js-sval">' + fmtStepsFull(val) + "</span>" +
+      '<span class="s-bottom"><span class="s-numrow"><span class="s-num num js-sval">' + fmtStepsFull(val) + "</span>" +
       '<span class="s-done js-sdone' + (done ? "" : " hidden") + '" aria-hidden="true">' + ICONS.badge + "</span></span>" +
-      trailSVG(progress) +
+      trailSVG(progress) + "</span>" +
       "</button>";
   }
 
@@ -577,25 +577,74 @@ var Today = (function () {
   }
 
   function genericTile(habit, dateStr, me, partner) {
-    var on = !!Data.value(dateStr, me, habit.id);
-    var pOn = partner ? !!Data.value(dateStr, partner, habit.id) : false;
-    var label = esc(habit.name) + ": " + (on ? "done" : "not yet") + ". Tap to toggle.";
-    return '<button class="tile tile-generic" data-habit="' + esc(habit.id) + '" style="--tint:' + (TINTS[habit.id] || "#A259FF") + '" aria-label="' + label + '">' +
-      '<span class="t-top"><span class="t-label">' + ICONS.check + esc(habit.name) + "</span>" +
-      (partner ? chipHTML(partner, pOn ? "done" : "not yet", true) : "") + "</span>" +
-      '<span class="g-state num js-gstate">' + (on ? "Done" : "Not yet") + "</span>" +
+    var target = habit.targets[me] || 1;
+    var val = Data.value(dateStr, me, habit.id);
+    var isCheck = habit.type === "check";
+    var done, displayVal, pct;
+    if (isCheck) {
+      done = !!val;
+      displayVal = done ? "1" : "0";
+      pct = done ? 1 : 0;
+    } else {
+      val = val || 0;
+      done = val >= target;
+      displayVal = val;
+      pct = Math.min(val / target, 1);
+    }
+    var pVal = partner ? Data.value(dateStr, partner, habit.id) : undefined;
+    var pTarget = partner ? (habit.targets[partner] || 1) : 1;
+    var pText;
+    if (pVal === undefined || pVal === null) pText = "0/" + pTarget;
+    else if (habit.type === "check") pText = pVal ? "done" : "0/1";
+    else pText = pVal + "/" + pTarget;
+    var unit = habit.unit || "times";
+    var label = esc(habit.name) + ": " + displayVal + " of " + target + ". Tap to add one.";
+    var tint = TINTS[habit.id] || "#A259FF";
+    return '<button class="tile tile-generic" data-habit="' + esc(habit.id) + '" style="--tint:' + tint + ';--gtint:' + tint + '" aria-label="' + label + '">' +
+      '<span class="t-top"><span class="t-label">' + esc(habit.name) + "</span>" +
+      (partner ? chipHTML(partner, pText, true) : "") + "</span>" +
+      '<span class="g-num num"><span class="js-gval">' + displayVal + "</span><small> / " + target + "</small></span>" +
+      '<span class="t-cap">' + esc(unit) + "</span>" +
+      '<span class="g-bar" aria-hidden="true"><i class="js-gfill" style="width:' + Math.round(pct * 100) + '%"></i></span>' +
+      (isCheck ? '<span class="t-check js-gcheck' + (done ? "" : " hidden") + '" aria-hidden="true">' + ICONS.badge + "</span>" : "") +
       "</button>";
   }
 
   function paintGeneric(tileEl, habit, val) {
-    tileEl.querySelector(".js-gstate").textContent = val ? "Done" : "Not yet";
-    tileEl.setAttribute("aria-label",
-      esc(habit.name) + ": " + (val ? "done" : "not yet") + ". Tap to toggle.");
+    var me = Store.get("person");
+    var target = habit.targets[me] || 1;
+    var isCheck = habit.type === "check";
+    var displayVal, pct, done;
+    if (isCheck) {
+      done = !!val;
+      displayVal = done ? "1" : "0";
+      pct = done ? 1 : 0;
+      var badge = tileEl.querySelector(".js-gcheck");
+      if (badge) {
+        if (done && badge.classList.contains("hidden")) {
+          badge.classList.remove("hidden", "pop");
+          void badge.offsetWidth;
+          badge.classList.add("pop");
+        } else if (!done) {
+          badge.classList.add("hidden");
+          badge.classList.remove("pop");
+        }
+      }
+    } else {
+      val = val || 0;
+      done = val >= target;
+      displayVal = val;
+      pct = Math.min(val / target, 1);
+    }
+    tileEl.querySelector(".js-gval").textContent = displayVal;
+    tileEl.querySelector(".js-gfill").style.width = Math.round(pct * 100) + "%";
+    tileEl.setAttribute("aria-label", esc(habit.name) + ": " + displayVal + " of " + target + ". Tap to add one.");
   }
 
   function tilesHTML(habits, dateStr, me, partner) {
     var order = ["water", "exercise", "steps"];
-    var sorted = habits.slice().sort(function (a, b) {
+    var visible = habits.filter(function (h) { return !h.archived; });
+    var sorted = visible.slice().sort(function (a, b) {
       var ai = order.indexOf(a.id), bi = order.indexOf(b.id);
       return (ai < 0 ? 99 : ai) - (bi < 0 ? 99 : bi);
     });
@@ -782,6 +831,12 @@ var Today = (function () {
         armLongPress(function () {
           openExerciseHistory(habit, habit.targets[Store.get("person")]);
         });
+      } else if (habit.id !== "steps") {
+        // Generic habit long-press: set exact value
+        armLongPress(function () {
+          var me = Store.get("person");
+          openExactGeneric(habit, habit.targets[me] || 1, Data.value(viewedDate(), me, habit.id) || 0);
+        });
       }
     });
     el.addEventListener("pointermove", function (e) {
@@ -831,9 +886,41 @@ var Today = (function () {
       openStepsSheet(habit, habit.targets[me], Data.value(d, me, habit.id) || 0);
       return;
     }
-    var gwas = !!Data.value(d, me, habit.id);
-    var gval = gwas ? 0 : 1;
-    logTile(habit, gval, el, function (v) { paintGeneric(el, habit, v); });
+    // Generic habit: check type toggles, count type adds +1
+    if (habit.type === "check") {
+      var gwas = !!Data.value(d, me, habit.id);
+      var gval = gwas ? 0 : 1;
+      logTile(habit, gval, el, function (v) { paintGeneric(el, habit, v); });
+    } else {
+      var gprev = Data.value(d, me, habit.id) || 0;
+      var gnext = gprev + 1;
+      logTile(habit, gnext, el, function (v) { paintGeneric(el, habit, v); });
+    }
+  }
+
+  function openExactGeneric(habit, target, current) {
+    var cur = current || 0;
+    var tileEl = document.querySelector('.tile[data-habit="' + habit.id + '"]');
+    var unit = habit.unit || "times";
+    var s = openSheet(esc(habit.name), null,
+      '<div class="numrow"><span class="num js-g-num">' + cur + "</span>" +
+      '<span class="numcap">' + esc(unit) + "</span></div>" +
+      '<div class="stepper">' +
+      '<button class="js-minus" aria-label="One less">&minus;</button>' +
+      '<button class="js-plus" aria-label="One more">+</button></div>' +
+      '<button class="btn js-done">Done</button>');
+    var body = s.el;
+    var num = body.querySelector(".js-g-num");
+    var shown = cur;
+    function paint() { num.textContent = shown; }
+    body.querySelector(".js-minus").onclick = function () { if (shown > 0) { shown -= 1; paint(); } };
+    body.querySelector(".js-plus").onclick = function () { shown += 1; paint(); };
+    body.querySelector(".js-done").onclick = function () {
+      if (shown !== cur && tileEl) {
+        logTile(habit, shown, tileEl, function (v) { paintGeneric(tileEl, habit, v); });
+      }
+      s.close();
+    };
   }
 
   /* ----- header ----- */
