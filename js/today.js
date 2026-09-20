@@ -1358,7 +1358,8 @@ var Today = (function () {
       habitsHeadHTML(partner) +
       '<div class="tile-grid"' + enterCls(4) + enterDelay(4) + ">" + tilesHTML(habitList, dateStr, me, partner) + "</div>" +
       '<button class="add-habit js-add-habit"' + enterCls(5) + enterDelay(5) + ' aria-label="Add a habit">' +
-      ICONS.plus + "<span>Add Habit</span></button>";
+      ICONS.plus + "<span>Add Habit</span></button>" +
+      gapCardHTML();
 
     root.querySelectorAll(".dnav").forEach(function (b) {
       b.addEventListener("click", function () { setDay(dateOffset + Number(b.dataset.nav)); });
@@ -1406,6 +1407,8 @@ var Today = (function () {
       if (window.Manage && typeof Manage.addSheet === "function") Manage.addSheet();
     });
 
+    bindGapCard();
+
     if (firstRender) {
       root.querySelectorAll(".press-in").forEach(function (el) {
         requestAnimationFrame(function () {
@@ -1418,6 +1421,99 @@ var Today = (function () {
     // Foreground case: the day became synced elsewhere and the moment has
     // not shown on this device yet. The per-day flag keeps it to once.
     maybeSyncMoment(dateStr, me, partner);
+  }
+
+
+  /* ----- v2 Phase C: "Got a gap?" free-time card ----- */
+  var gapState = { gap: 0, tag: "All", picked: null };
+
+  function gapCardHTML() {
+    var sizes = Backlog.SIZES.map(function (s) {
+      return '<button class="gap-size" data-gap="' + s + '">' + Backlog.sizeLabel(s) + "</button>";
+    }).join("");
+    var tags = Backlog.FILTER_TAGS.map(function (t) {
+      return '<button class="gap-tag' + (t === "All" ? " on" : "") + '" data-tag="' + t + '">' + t + "</button>";
+    }).join("");
+    return '<section class="gap-card glass"' + enterCls(6) + enterDelay(6) + ' aria-label="Free time">' +
+      '<div class="gap-head"><span class="gap-title">Got a gap?</span></div>' +
+      '<div class="gap-sizes">' + sizes + "</div>" +
+      '<div class="gap-tags">' + tags + "</div>" +
+      '<div class="gap-results" id="gap-results"><p class="gap-hint">Pick a size to see what fits.</p></div>' +
+      '<button class="gap-add" id="gap-add">' + ICONS.plus + "<span>Add to backlog</span></button>" +
+      "</section>";
+  }
+
+  function gapResultsHTML(list) {
+    if (!Backlog.count()) {
+      return '<p class="gap-hint">Backlog is empty. Add a few things first.</p>';
+    }
+    if (!list.length) {
+      return '<p class="gap-hint">Nothing fits. Try a bigger gap or another tag.</p>';
+    }
+    var rows = list.map(function (it) {
+      return '<button class="gap-pick' + (gapState.picked === it.id ? " sel" : "") + '" data-id="' + esc(it.id) + '">' +
+        '<span class="gap-pickwhat">' + esc(it.what) + "</span>" +
+        '<span class="bl-sizechip">' + Backlog.sizeLabel(it.size) + "</span></button>";
+    }).join("");
+    return rows + '<button class="gap-shuffle" id="gap-shuffle">Shuffle</button>';
+  }
+
+  function paintGapResults(list) {
+    var box = document.getElementById("gap-results");
+    if (!box) return;
+    box.innerHTML = gapResultsHTML(list || []);
+    box.querySelectorAll(".gap-pick").forEach(function (b) {
+      b.addEventListener("click", function () {
+        // Phase C: selecting only. Starting a timed block is Phase D.
+        gapState.picked = b.dataset.id;
+        box.querySelectorAll(".gap-pick").forEach(function (x) {
+          x.classList.toggle("sel", x.dataset.id === gapState.picked);
+        });
+      });
+    });
+    var sh = document.getElementById("gap-shuffle");
+    if (sh) sh.addEventListener("click", function () {
+      gapState.picked = null;
+      paintGapResults(Backlog.shuffleThree(gapState.gap, gapState.tag));
+    });
+  }
+
+  function showGapPicks() {
+    if (!gapState.gap) return;
+    gapState.picked = null;
+    Backlog.load().then(function () {
+      paintGapResults(Backlog.pickThree(gapState.gap, gapState.tag));
+    }, function () {
+      var box = document.getElementById("gap-results");
+      if (box) box.innerHTML = '<p class="gap-hint">Couldn\'t load the backlog. Check your connection.</p>';
+    });
+  }
+
+  function bindGapCard() {
+    var card = document.querySelector(".gap-card");
+    if (!card) return;
+    // Prefetch the backlog so taps answer instantly.
+    Backlog.load().catch(function () {});
+    card.querySelectorAll(".gap-size").forEach(function (b) {
+      b.addEventListener("click", function () {
+        card.querySelectorAll(".gap-size").forEach(function (x) { x.classList.remove("on"); });
+        b.classList.add("on");
+        gapState.gap = Number(b.dataset.gap);
+        showGapPicks();
+      });
+    });
+    card.querySelectorAll(".gap-tag").forEach(function (b) {
+      b.addEventListener("click", function () {
+        card.querySelectorAll(".gap-tag").forEach(function (x) { x.classList.remove("on"); });
+        b.classList.add("on");
+        gapState.tag = b.dataset.tag;
+        showGapPicks();
+      });
+    });
+    var add = document.getElementById("gap-add");
+    if (add) add.addEventListener("click", function () {
+      if (window.Backlog && typeof Backlog.openAddSheet === "function") Backlog.openAddSheet();
+    });
   }
 
   /* ----- init ----- */
