@@ -701,7 +701,7 @@ button { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent
 .skel-tile.skel-tall { grid-row: span 2; height: 312px; }
 
 /* Tile grid */
-.tile-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: 150px 104px; gap: 12px; }
+.tile-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: 150px 104px; grid-auto-rows: 150px; gap: 12px; }
 .tile {
   position: relative;
   border-radius: 30px;
@@ -727,7 +727,7 @@ button { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent
   -webkit-user-select: none;
 }
 .tile-ex { background: var(--ex-tint), var(--glass); }
-.tile-steps { background: var(--steps-tint), var(--glass); display: grid; grid-template-rows: auto 1fr; }
+.tile-steps { background: var(--steps-tint), var(--glass); display: grid; grid-template-rows: auto 1fr; grid-column: 1 / -1; }
 .s-bottom { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; }
 .trail { width: 150px; height: 38px; flex-shrink: 0; }
 .tile.pressing { transform: scale(0.97); }
