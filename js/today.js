@@ -62,12 +62,23 @@ var Today = (function () {
   function dayFraction(dateStr, personId) {
     var entries = Data.getCached(dateStr, personId) || {};
     var habits = Store.get("habits").habits;
-    var met = 0, total = 0;
+    var sum = 0, total = 0;
     habits.forEach(function (h) {
-      var r = habitMet(h, personId, entries);
-      if (r !== null) { total++; if (r) met++; }
+      var p = habitProgress(h, personId, entries);
+      if (p !== null) { total++; sum += p; }
     });
-    return total ? met / total : 0;
+    return total ? sum / total : 0;
+  }
+
+  // Partial progress toward a daily sync-eligible habit, 0..1.
+  // Null when the habit is not evaluated for this person/day.
+  function habitProgress(habit, personId, entries) {
+    if (habit.period !== "day" || !habit.syncEligible) return null; // not evaluated
+    var v = entries ? entries[habit.id] : undefined;
+    var target = habit.targets[personId];
+    if (habit.syncRule === "if-logged" && (v === undefined || v === null)) return null; // excluded
+    if (!target) return null;
+    return Math.min((v || 0) / target, 1);
   }
 
   function ringSVG(frac, color, size) {
@@ -111,6 +122,13 @@ var Today = (function () {
     if (n < 1000) return String(n);
     var k = Math.round((n / 1000) * 10) / 10;
     return k + "k";
+  }
+
+  // Full grouped format for the tile's main number ("4,200"), matching the
+  // mockup. The partner chip keeps the compact fmtSteps ("6.5k").
+  function fmtStepsFull(n) {
+    if (n === undefined || n === null) return "--";
+    return Number(n).toLocaleString("en-US");
   }
 
   function glowFor(personId) {
@@ -293,7 +311,6 @@ var Today = (function () {
       "</div>" +
       (partner ? sphereHTML(partner, pFrac, "w7", Store.personName(partner), "partner") : "") +
       "</div>" +
-      '<div class="tg-div"></div>' +
       '<div class="tg-foot"><span class="tg-line">' + esc(st.line) + "</span>" +
       '<button class="nudge glass' + (st.showNudge ? "" : " hidden") + '" id="nudge-btn">Nudge</button>' +
       "</div></section>";
@@ -419,8 +436,8 @@ var Today = (function () {
       waveSVG("var(--water-top)", "wfill") +
       '<i class="bub b1"></i><i class="bub b2"></i><i class="bub b3"></i><i class="bub b4"></i>' +
       "</span></span>" +
-      '<span class="t-top"><span class="t-label deep-water">' + ICONS.water + "Water</span></span>" +
-      '<span class="t-main"><span class="w-num num"><span class="js-wval">' + val + "</span><small> / " + target + "</small></span>" +
+      '<span class="t-topgroup"><span class="t-label deep-water">' + ICONS.water + "Water</span>" +
+      '<span class="w-num num"><span class="js-wval">' + val + "</span><small> / " + target + "</small></span>" +
       '<span class="t-cap">glasses &middot; tap to pour</span></span>' +
       (partner ? '<span class="t-foot">' + chipHTML(partner, pText) + "</span>" : "") +
       '<span class="t-check js-wcheck' + (done ? "" : " hidden") + '" aria-hidden="true">' + ICONS.badge + "</span>" +
@@ -506,10 +523,10 @@ var Today = (function () {
   }
 
   function stepsLabel(habit, val, me, partner) {
-    var s = "Steps: " + fmtSteps(val) + " of " + Number(habit.targets[me]).toLocaleString() + " goal.";
+    var s = "Steps: " + fmtStepsFull(val) + " of " + Number(habit.targets[me]).toLocaleString() + " goal.";
     if (partner) {
       var pVal = Data.value(viewedDate(), partner, habit.id);
-      s += " " + Store.personName(partner) + ": " + ((pVal === undefined || pVal === null) ? "not yet" : fmtSteps(pVal)) + ".";
+      s += " " + Store.personName(partner) + ": " + ((pVal === undefined || pVal === null) ? "not yet" : fmtStepsFull(pVal)) + ".";
     }
     return s + " Tap to log steps.";
   }
@@ -534,7 +551,7 @@ var Today = (function () {
     return '<button class="tile tile-steps" data-habit="steps" style="--tint:' + TINTS.steps + '" aria-label="' + esc(stepsLabel(habit, val, me, partner)) + '">' +
       '<span class="t-top"><span class="t-label deep-steps">' + ICONS.steps + "Steps</span>" +
       (partner ? chipHTML(partner, pText, true) : "") + "</span>" +
-      '<span class="s-numrow"><span class="s-num num js-sval">' + fmtSteps(val) + "</span>" +
+      '<span class="s-numrow"><span class="s-num num js-sval">' + fmtStepsFull(val) + "</span>" +
       '<span class="s-done js-sdone' + (done ? "" : " hidden") + '" aria-hidden="true">' + ICONS.badge + "</span></span>" +
       trailSVG(progress) +
       "</button>";
@@ -543,7 +560,7 @@ var Today = (function () {
   function paintSteps(tileEl, habit, val) {
     var me = Store.get("person");
     var target = habit.targets[me];
-    tileEl.querySelector(".js-sval").textContent = fmtSteps(val);
+    tileEl.querySelector(".js-sval").textContent = fmtStepsFull(val);
     var progress = (val === undefined || val === null) ? 0 : Math.min(val / target, 1);
     tileEl.querySelector(".js-trail").style.strokeDashoffset = (100 * (1 - progress)).toFixed(1);
     var done = val !== undefined && val !== null && val >= target;
@@ -849,15 +866,66 @@ var Today = (function () {
   }
 
   /* ----- render ----- */
+
+  // Placeholder blocks while check-ins load. Nothing is painted from the
+  // cache until the fetch below resolves: painting early shows 0/"not
+  // yet", and a tap would then overwrite the real totals.
+  function skeletonHTML() {
+    return '<div class="skel-wrap" aria-label="Loading today">' +
+      '<div class="skel skel-head"></div>' +
+      '<div class="skel skel-card"></div>' +
+      '<div class="skel-grid">' +
+      '<div class="skel skel-tile skel-tall"></div>' +
+      '<div class="skel skel-tile"></div>' +
+      '<div class="skel skel-tile"></div>' +
+      "</div></div>";
+  }
+
   function render() {
     var root = document.getElementById("today-root");
     var me = Store.get("person");
     var habitsDoc = Store.get("habits");
     if (!root || !me || !habitsDoc) return;
-    paintInkVars();
     var dateStr = viewedDate();
     var partner = Store.partnerId();
-    var habitList = habitsDoc.habits;
+
+    root.innerHTML = skeletonHTML();
+
+    var fetches = [Data.fetchCheckin(dateStr, me)];
+    if (partner) fetches.push(Data.fetchCheckin(dateStr, partner));
+    var monday = mondayOf(localDate());
+    for (var i = 0; i < 7; i++) {
+      var d = addDays(monday, i);
+      fetches.push(Data.fetchCheckin(d, me));
+      if (partner) fetches.push(Data.fetchCheckin(d, partner));
+    }
+
+    Promise.all(fetches).then(function () {
+      paint(dateStr, me, partner, habitsDoc.habits);
+    }, function (err) {
+      var status = err && err.status;
+      if (status === 401 || status === 403) {
+        // Bad/revoked token: reload so the boot path restarts onboarding.
+        window.location.reload();
+        return;
+      }
+      // Network or server failure: paint from cache when we have check-ins
+      // (the offline banner covers the offline case); otherwise show Retry
+      // instead of painting empty values.
+      if (Data.getCached(dateStr, me) !== null) {
+        paint(dateStr, me, partner, habitsDoc.habits);
+      } else {
+        root.innerHTML = '<div class="load-error"><p>Couldn\'t load today\'s check-ins. Check your connection.</p>' +
+          '<button class="btn" id="today-retry">Retry</button></div>';
+        document.getElementById("today-retry").addEventListener("click", render);
+      }
+    });
+  }
+
+  function paint(dateStr, me, partner, habitList) {
+    var root = document.getElementById("today-root");
+    if (!root) return;
+    paintInkVars();
 
     root.innerHTML =
       headerHTML(dateStr, me, partner) +
