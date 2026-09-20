@@ -30,6 +30,7 @@
   --water-top: rgba(100, 210, 255, 0.34);
   --water-bottom: rgba(10, 132, 255, 0.42);
   --water-liq: linear-gradient(180deg, var(--water-top) 0%, var(--water-bottom) 100%);
+  --water-ink: #64D2FF;
   --ex-liq: linear-gradient(180deg, #FF6482 0%, #BF5AF2 100%);
 
   --canvas: #05060A;
@@ -79,6 +80,7 @@
     --steps-ink: #248A3D;
     --water-top: rgba(90, 200, 250, 0.35);
     --water-bottom: rgba(0, 122, 255, 0.32);
+    --water-ink: #0071A4;
     --ex-liq: linear-gradient(180deg, #FF2D55 0%, #AF52DE 100%);
     color-scheme: light;
   }
@@ -513,14 +515,14 @@ button { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent
 .top-row { display: flex; align-items: center; justify-content: space-between; padding: 0 4px; }
 .date-nav { display: flex; align-items: center; gap: 2px; }
 .dnav {
-  width: 48px; height: 48px;
+  width: 40px; height: 40px;
   border: 0; background: none;
   color: var(--ink-60);
   font-size: 26px; line-height: 1;
   cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   border-radius: 12px;
-  min-width: 48px; min-height: 48px;
+  min-width: 40px; min-height: 40px;
 }
 .dnav:disabled { opacity: 0.25; }
 .dnav:not(:disabled):active { background: rgba(127, 127, 140, 0.15); }
@@ -563,7 +565,7 @@ button { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent
 
 /* Together card */
 .together-card { border-radius: 30px; padding: 16px 18px; display: flex; flex-direction: column; gap: 14px; }
-.tg-head { display: flex; align-items: center; justify-content: space-between; }
+.tg-head { display: flex; align-items: center; justify-content: space-between; line-height: 1.4; }
 .tg-label { font-size: 13px; font-weight: 600; letter-spacing: 0.02em; color: var(--ink-60); }
 .tg-status { font-size: 13px; font-weight: 600; color: var(--ink-30); }
 .tg-status.is-sync { color: var(--sync-purple); }
@@ -615,7 +617,7 @@ button { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent
   color: var(--ink);
 }
 .sphere-pct.on-liquid { color: #fff; }
-.sphere-name { font-size: 13px; font-weight: 600; color: var(--ink-60); }
+.sphere-name { font-size: 13px; font-weight: 600; color: var(--ink-60); line-height: 1.4; }
 
 /* Seamless wave loop */
 .wave { display: block; }
@@ -669,6 +671,21 @@ button { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent
 .habits-title { font-size: 22px; line-height: 28px; font-weight: 700; letter-spacing: -0.02em; margin: 0; }
 .habits-corner { font-size: 13px; color: var(--ink-30); }
 
+/* Loading skeleton (Today paints only after check-ins fetch) */
+.skel { border-radius: 18px; background: var(--glass); border: var(--hairline); position: relative; overflow: hidden; }
+.skel::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(100deg, transparent 20%, rgba(255, 255, 255, 0.09) 50%, transparent 80%);
+  animation: skelShimmer 1.4s linear infinite;
+}
+@keyframes skelShimmer { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+@media (prefers-reduced-motion: reduce) { .skel::after { animation: none; } }
+.skel-head { height: 66px; margin: 6px 2px 12px; border-radius: 20px; }
+.skel-card { height: 148px; margin-bottom: 14px; border-radius: 24px; }
+.skel-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.skel-tile { height: 150px; border-radius: 30px; }
+.skel-tile.skel-tall { grid-row: span 2; height: 312px; }
+
 /* Tile grid */
 .tile-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: 172px 172px; gap: 12px; }
 .tile {
@@ -703,7 +720,7 @@ button { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent
 .t-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; position: relative; z-index: 2; }
 .t-label { display: inline-flex; align-items: center; gap: 6px; font-size: 15px; font-weight: 600; }
 .t-label svg { width: 16px; height: 16px; }
-.t-label.deep-water { color: var(--me-ink); }
+.t-label.deep-water { color: var(--water-ink); }
 .t-label.deep-exercise { color: var(--ex-ink); }
 .t-label.deep-steps { color: var(--steps-ink); }
 
@@ -743,6 +760,7 @@ button { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent
 .bub.b3 { left: 70%; width: 4px; height: 4px; animation-duration: 5.6s; animation-delay: 3.2s; }
 .bub.b4 { left: 84%; width: 6px; height: 6px; animation-duration: 6s; animation-delay: 0.9s; }
 @keyframes bubble { 0% { transform: translateY(0) scale(0.7); opacity: 0; } 20% { opacity: 0.7; } 100% { transform: translateY(-150px) scale(1); opacity: 0; } }
+.t-topgroup { position: relative; z-index: 2; display: flex; flex-direction: column; gap: 2px; }
 .t-main { position: relative; z-index: 2; display: flex; flex-direction: column; gap: 2px; }
 .w-num {
   font-family: var(--font-num);
@@ -758,7 +776,7 @@ button { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent
   position: absolute; top: 14px; right: 14px;
   width: 26px; height: 26px;
   border-radius: 50%;
-  background: var(--me-ink);
+  background: var(--water-ink);
   color: #fff;
   display: flex; align-items: center; justify-content: center;
   z-index: 3;
