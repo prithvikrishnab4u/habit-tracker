@@ -3,10 +3,13 @@
    typography, tracking, keyframes, timing) come from:
      mockup-today-sync-habits.html   (Today / Sync / Habits)
      mockup-onboarding.html          (Setup flow)
-   Person-color liquid always uses the color spec 3-stop gradient
-   (full-opacity hex), which wins over the mockups' partial-opacity
-   liquids: linear-gradient(180deg, var(--liq-top) 0%,
-   var(--liq-base) 18%, var(--liq-bottom) 100%). */
+   Person-color liquid (Today spheres, color-picker spheres, pour glass)
+   uses the color spec 3-stop gradient (full-opacity hex), which wins over
+   the mockups' partial-opacity liquids: linear-gradient(180deg,
+   var(--liq-top) 0%, var(--liq-base) 18%, var(--liq-bottom) 100%).
+   Habit liquids keep their own colors and never take person colors: the
+   water tile stays translucent cyan-to-blue per the look recipe, and the
+   exercise vials use the fixed pink-to-purple gradient. */
 
 :root {
   --font-text: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
@@ -23,6 +26,11 @@
   --ex-ink: #DA8FFF;
   --steps-tint: linear-gradient(160deg, rgba(48, 209, 88, 0.16), rgba(48, 209, 88, 0.02) 60%);
   --steps-ink: #30D158;
+  /* Habit liquids. Never person colors (color-spec section 7). */
+  --water-top: rgba(100, 210, 255, 0.34);
+  --water-bottom: rgba(10, 132, 255, 0.42);
+  --water-liq: linear-gradient(180deg, var(--water-top) 0%, var(--water-bottom) 100%);
+  --ex-liq: linear-gradient(180deg, #FF6482 0%, #BF5AF2 100%);
 
   --canvas: #05060A;
   --ink: #FFFFFF;
@@ -69,6 +77,9 @@
     --ex-ink: #8944AB;
     --steps-tint: linear-gradient(160deg, rgba(52, 199, 89, 0.14), rgba(52, 199, 89, 0.02) 60%);
     --steps-ink: #248A3D;
+    --water-top: rgba(90, 200, 250, 0.35);
+    --water-bottom: rgba(0, 122, 255, 0.32);
+    --ex-liq: linear-gradient(180deg, #FF2D55 0%, #AF52DE 100%);
     color-scheme: light;
   }
 }
@@ -684,11 +695,7 @@ button { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent
   user-select: none;
   -webkit-user-select: none;
 }
-.tile-water { grid-row: span 2;
-  background:
-    linear-gradient(160deg, color-mix(in srgb, var(--liq-top) 16%, transparent), color-mix(in srgb, var(--liq-top) 2%, transparent) 60%),
-    var(--glass);
-}
+.tile-water { grid-row: span 2; }
 .tile-ex { background: var(--ex-tint), var(--glass); }
 .tile-steps { background: var(--steps-tint), var(--glass); }
 .tile.pressing { transform: scale(0.97); }
@@ -711,8 +718,6 @@ button { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent
   border-radius: 999px;
   background: var(--glass-strong);
   border: var(--hairline);
-  backdrop-filter: var(--blur);
-  -webkit-backdrop-filter: var(--blur);
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
   position: relative;
@@ -726,10 +731,11 @@ button { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent
 .t-liquid { position: absolute; inset: 0; z-index: 0; }
 .t-liquid-fill {
   position: absolute; left: 0; right: 0; bottom: 0;
-  background: linear-gradient(180deg, var(--liq-top) 0%, var(--liq-base) 18%, var(--liq-bottom) 100%);
+  background: var(--water-liq);
   transition: height 1200ms var(--ease);
 }
 .t-liquid-fill .wave { position: absolute; left: 0; top: -9px; width: 344px; height: 10px; animation: waveT 7s linear infinite; }
+.t-liquid-fill .wave path { fill: var(--water-top); }
 @keyframes waveT { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 .bub { position: absolute; bottom: -8px; border-radius: 50%; background: rgba(255, 255, 255, 0.45); animation: bubble 5.5s ease-in infinite; }
 .bub.b1 { left: 22%; width: 5px; height: 5px; animation-duration: 5.2s; }
@@ -793,7 +799,7 @@ button { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent
 .vial i {
   position: absolute; left: 0; right: 0; bottom: 0;
   height: 0;
-  background: linear-gradient(180deg, var(--liq-top) 0%, var(--liq-base) 18%, var(--liq-bottom) 100%);
+  background: var(--ex-liq);
   transition: height 1000ms var(--ease);
   display: block;
 }
