@@ -21,6 +21,11 @@ var Manage = (function () {
     return Number(target).toLocaleString("en-US") + " " + unit + " " + per;
   }
 
+  function buildTag() {
+    var b = document.body && document.body.getAttribute("data-build");
+    return b || "dev";
+  }
+
   function habitRow(h) {
     var tint = tintFor(h);
     return '<button class="habit-row" data-habit="' + h.id + '" style="--tint:' + tint + '">' +
@@ -397,7 +402,8 @@ var Manage = (function () {
       "</div>" +
       '<div class="signout-card glass">' +
       '<button class="signout-btn" id="signout-btn">Sign Out of This Device</button>' +
-      "</div>";
+      "</div>" +
+      '<div class="build-foot">build ' + esc(buildTag()) + "</div>";
 
     document.getElementById("add-habit").addEventListener("click", addSheet);
     document.getElementById("signout-btn").addEventListener("click", signOut);
