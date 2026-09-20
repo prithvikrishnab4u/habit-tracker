@@ -149,11 +149,12 @@ var Onboarding = (function () {
     var name = displayName(person);
     var partner = otherId(person);
     var partnerName = displayName(partner);
-    var partnerColor = note && note.partnerColor ? note.partnerColor : null;
+    // Before the token is validated pod.json can't be read, so assume the
+    // partner still has their default color. The handshake re-checks this
+    // against fresh data and bounces back here if it changed.
+    var partnerColor = (note && note.partnerColor) || Colors.DEFAULTS[partner];
 
-    var body = "Pick your color. ";
-    if (partnerColor) body += partnerName + " is " + Colors.get(partnerColor).name + ". ";
-    body += "You'll spot each other by color everywhere in here.";
+    var body = "Pick your color. You'll spot each other by color everywhere in here.";
 
     var html =
       '<div class="flood" id="ob-flood" aria-hidden="true"></div>' +
@@ -166,6 +167,8 @@ var Onboarding = (function () {
         : Colors.get(colorId).name + " is too close to " + partnerName + "'s " +
           Colors.get(partnerColor).name + " for color-blind eyes. Pick another.";
       html += '<p class="onb-note">' + esc(noteText) + "</p>";
+    } else {
+      html += '<p class="onb-note">' + esc(partnerName + " is " + Colors.get(partnerColor).name + ".") + "</p>";
     }
     html += '<div class="liq-grid" role="group" aria-label="Choose your color">';
 
@@ -222,9 +225,10 @@ var Onboarding = (function () {
     var c = Colors.get(colorId);
     f.style.backgroundColor = c.base;
     f.style.opacity = String(c.flood);
-    // Text sitting on the flood uses the palette's measured liquid-text
-    // value, so names stay readable on dark and light floods alike.
-    if (root) root.style.setProperty("--flood-ink", c.text);
+    // The 0.50 flood opacity was chosen for white text: dark ink on the
+    // orange flood is ~2.8:1, white is ~6.6:1. The palette's dark "text"
+    // value is only for glyphs sitting directly on liquid.
+    if (root) root.style.setProperty("--flood-ink", "#fff");
     if (first) {
       f.classList.remove("enter");
       void f.offsetWidth;

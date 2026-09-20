@@ -632,8 +632,8 @@ body {
 
 .liq.dim { opacity: 0.35; }
 
-/* On the color step the flood sits behind everything, so text uses the
-   palette's measured liquid-text ink for the selected color. */
+/* On the color step the flood sits behind everything, so text is always
+   white: the 0.50 flood opacity was chosen for white text. */
 .onb.flooded h1 { color: var(--flood-ink, #fff); }
 .onb.flooded .lede { color: var(--flood-ink, #fff); opacity: 0.8; }
 .onb.flooded .liq-name { color: var(--flood-ink, #fff); opacity: 0.85; }
