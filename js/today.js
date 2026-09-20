@@ -414,9 +414,9 @@ var Today = (function () {
     var pText = (pVal === undefined || pVal === null) ? "not yet" : pVal + "/" + habit.targets[partner];
     var pct = Math.min(val / target, 1);
     var done = val >= target;
-    return '<button class="tile tile-water' + (done ? " has-badge" : "") + '" data-habit="water" style="--tint:' + TINTS.water + ";" + Colors.liquidVars(Store.getColorId(me)) + '" aria-label="' + esc(waterLabel(habit, val, me, partner)) + '">' +
+    return '<button class="tile tile-water' + (done ? " has-badge" : "") + '" data-habit="water" style="--tint:' + TINTS.water + ';" aria-label="' + esc(waterLabel(habit, val, me, partner)) + '">' +
       '<span class="t-liquid" aria-hidden="true"><span class="t-liquid-fill js-wfill" style="height:' + (6 + 60 * pct) + '%">' +
-      waveSVG("var(--liq-top)", "wfill") +
+      waveSVG("var(--water-top)", "wfill") +
       '<i class="bub b1"></i><i class="bub b2"></i><i class="bub b3"></i><i class="bub b4"></i>' +
       "</span></span>" +
       '<span class="t-top"><span class="t-label deep-water">' + ICONS.water + "Water</span></span>" +
@@ -480,7 +480,7 @@ var Today = (function () {
     var pn = partner ? weekCount(habit, dateStr, partner) : 0;
     var vials = "";
     for (var i = 0; i < target; i++) vials += '<span class="vial"><i></i></span>';
-    return '<button class="tile tile-ex" data-habit="exercise" style="--tint:' + TINTS.exercise + ";" + Colors.liquidVars(Store.getColorId(me)) + '" aria-label="' + esc(exerciseLabel(habit, n, me, partner)) + '">' +
+    return '<button class="tile tile-ex" data-habit="exercise" style="--tint:' + TINTS.exercise + ';" aria-label="' + esc(exerciseLabel(habit, n, me, partner)) + '">' +
       '<span class="t-top"><span class="t-label deep-exercise">' + ICONS.exercise + "Exercise</span>" +
       (partner ? chipHTML(partner, pn + "/" + habit.targets[partner], true) : "") + "</span>" +
       '<span class="x-num num"><span class="js-xval">' + n + "</span><small> / " + target + "</small></span>" +
