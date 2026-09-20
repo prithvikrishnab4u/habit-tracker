@@ -547,6 +547,9 @@ var Onboarding = (function () {
     var meColor = Colors.get(colorId).base;
     var poColor = Colors.get(Store.getColorId(partner)).base;
 
+    // Keep the pour flood up behind the finale.
+    var flood = document.getElementById("ob-pourflood");
+
     root.innerHTML =
       '<div class="onb">' + bgHTML() +
       '<div class="onb-screen onb-done">' +
@@ -559,9 +562,14 @@ var Onboarding = (function () {
       '<span class="done-a" style="background:#FFFFFF;color:' + meColor + '">' + esc(initial(person)) + "</span>" +
       '<span class="done-a" style="background:' + poColor + '">' + esc(initial(partner)) + "</span>" +
       "</div>" +
-      '<button class="btn" id="ob-enter"><span class="disp">Start syncing</span>' +
+      '<button class="btn" id="ob-enter"><span class="disp">Open Today</span>' +
       '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>' +
       "</div></div>";
+
+    if (flood) {
+      flood.classList.add("go");
+      root.querySelector(".onb").appendChild(flood);
+    }
 
     document.getElementById("ob-enter").addEventListener("click", function () {
       Store.applyColor();
