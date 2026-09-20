@@ -5,6 +5,7 @@
   var screens = {
     today: "screen-today",
     pod: "screen-pod",
+    backlog: "screen-backlog",
     habits: "screen-habits"
   };
 
@@ -18,6 +19,7 @@
     if (window.Today && Today.clearToast) Today.clearToast();
     if (name === "today") Today.render();
     if (name === "pod") Pod.render();
+    if (name === "backlog") Backlog.render();
     if (name === "habits") Manage.render();
     window.scrollTo(0, 0);
   }
@@ -39,6 +41,7 @@
   function boot() {
     Store.applyColor();
     Today.init();
+    Backlog.init();
     setOfflineBanner();
     window.addEventListener("online", function () {
       document.getElementById("offline-banner").classList.add("hidden");
@@ -69,6 +72,7 @@
         Store.load().then(function () {
           if (!document.getElementById("screen-today").classList.contains("hidden")) Today.render();
           if (!document.getElementById("screen-pod").classList.contains("hidden")) Pod.render();
+          if (!document.getElementById("screen-backlog").classList.contains("hidden")) Backlog.render();
         }).catch(function () {});
       }
     });
