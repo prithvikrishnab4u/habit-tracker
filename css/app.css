@@ -51,6 +51,7 @@
   --tab-on: rgba(255, 255, 255, 0.16);
   --blur: blur(30px) saturate(180%);
   --sync-purple: #BF5AF2;
+  --cal-faint: rgba(255, 255, 255, 0.08);
   color-scheme: dark;
 }
 
@@ -82,6 +83,7 @@
     --water-bottom: rgba(0, 122, 255, 0.32);
     --water-ink: #0071A4;
     --ex-liq: linear-gradient(180deg, #FF2D55 0%, #AF52DE 100%);
+    --cal-faint: rgba(60, 60, 67, 0.08);
     color-scheme: light;
   }
 }
@@ -119,7 +121,6 @@ button { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent
   z-index: 0;
   pointer-events: none;
 }
-
 .orb {
   position: absolute;
   border-radius: 50%;
@@ -181,6 +182,7 @@ button { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent
 /* Fixed status bar band: covers content scrolling under the clock/battery.
    Glass background + blur, above content, below sheets. */
 #statusbar-band {
+  display: none;
   position: fixed;
   top: 0; left: 0; right: 0;
   height: env(safe-area-inset-top);
@@ -190,9 +192,11 @@ button { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent
   z-index: 25;
   pointer-events: none;
 }
+/* Show the band only with the tab shell (hidden during onboarding / load error). */
+body:has(#tabbar:not(.hidden)) #statusbar-band { display: block; }
 
 .screen {
-  padding: 58px 16px 128px;
+  padding: max(8px, calc(58px - env(safe-area-inset-top))) 16px calc(128px + env(safe-area-inset-bottom));
   min-height: calc(100dvh - env(safe-area-inset-top));
 }
 
@@ -385,7 +389,7 @@ button { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent
   left: 8px; right: 8px;
   bottom: calc(8px + env(safe-area-inset-bottom));
   max-width: 584px;
-  max-height: calc(100dvh - 120px);
+  max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 32px);
   overflow-y: auto;
   margin: 0 auto;
   z-index: 61;
@@ -547,6 +551,9 @@ button { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent
   padding: 3px;
   border-radius: 999px;
   flex: 0 0 auto;
+  background: var(--glass-strong);
+  border: var(--hairline);
+  box-shadow: var(--shadow-sm);
 }
 .pair-pair { display: flex; align-items: center; }
 .avatar {
@@ -913,6 +920,28 @@ button { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent
   border-radius: 2px;
   transition: width 900ms var(--ease);
 }
+/* Check-type habit: large check-circle toggle */
+.tile-check { display: flex; flex-direction: column; justify-content: space-between; align-items: center; }
+.tile-check .t-top { width: 100%; }
+.check-circle {
+  width: 64px; height: 64px;
+  border-radius: 50%;
+  border: var(--hairline);
+  background: rgba(127, 127, 140, 0.12);
+  color: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative; z-index: 2;
+  transition: background 300ms var(--ease), border-color 300ms var(--ease), color 300ms var(--ease), transform 200ms var(--ease);
+}
+.check-circle svg { width: 28px; height: 28px; }
+.check-circle.on {
+  background: var(--gtint, #A259FF);
+  border-color: transparent;
+  color: #fff;
+}
+.check-circle:active { transform: scale(0.94); }
 
 /* Add habit */
 .add-habit {
@@ -929,10 +958,8 @@ button { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent
   color: var(--me-ink);
   cursor: pointer;
   border: var(--hairline);
-  background: var(--glass);
+  background: var(--glass-strong);
   box-shadow: var(--shadow-sm);
-  backdrop-filter: var(--blur);
-  -webkit-backdrop-filter: var(--blur);
 }
 .add-habit svg { width: 18px; height: 18px; }
 .add-habit:active { transform: scale(0.98); }
@@ -999,7 +1026,7 @@ button { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent
   background-clip: text;
   -webkit-text-fill-color: transparent;
 }
-.hero-sub { color: var(--ink-60); font-size: 15px; margin: 6px 0 0; }
+.hero-sub { color: var(--ink-60); font-size: 15px; margin: 6px 0 0; white-space: nowrap; }
 .sync-hero-chips {
   display: flex;
   flex-direction: column;
@@ -1053,6 +1080,7 @@ button { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent
   font-family: var(--font-num);
 }
 .cal-blank { background: none; }
+.cal-none { background: var(--cal-faint); }
 .cal-both .cal-day {
   color: #fff;
 }
@@ -1249,8 +1277,9 @@ button.habit-row.habit-add { cursor: pointer; border-top: 0.5px solid var(--hair
   letter-spacing: 0.02em;
   text-transform: uppercase;
   color: var(--ink-60);
-  margin: 0 0 6px;
+  margin: 16px 0 6px;
 }
+.token-card label:first-child { margin-top: 0; }
 .token-card input {
   width: 100%;
   min-height: 48px;
@@ -1271,7 +1300,7 @@ button.habit-row.habit-add { cursor: pointer; border-top: 0.5px solid var(--hair
 .onb {
   position: relative;
   z-index: 1;
-  min-height: 100dvh;
+  height: calc(100dvh - env(safe-area-inset-top));
   font-family: var(--font-onb);
   color: #FFFFFF;
   background: #0C0B14;
@@ -1323,7 +1352,7 @@ button.habit-row.habit-add { cursor: pointer; border-top: 0.5px solid var(--hair
 /* Progress header: 4 segments + round back button */
 .onb-top {
   position: absolute;
-  top: 58px; left: 24px; right: 24px;
+  top: max(16px, calc(58px - env(safe-area-inset-top))); left: 24px; right: 24px;
   z-index: 5;
   display: flex;
   align-items: center;
@@ -1413,7 +1442,7 @@ button.habit-row.habit-add { cursor: pointer; border-top: 0.5px solid var(--hair
 }
 
 /* ---- Step: welcome ---- */
-.onb-welcome { padding: 90px 24px 48px; justify-content: space-between; }
+.onb-welcome { padding: max(16px, calc(90px - env(safe-area-inset-top))) 24px calc(48px + env(safe-area-inset-bottom)); justify-content: space-between; }
 .onb-orbit {
   align-self: center;
   position: relative;
@@ -1452,7 +1481,7 @@ button.habit-row.habit-add { cursor: pointer; border-top: 0.5px solid var(--hair
 .onb-welcome .btn svg { width: 22px; height: 22px; }
 
 /* ---- Step: install ---- */
-.onb-install { padding: 124px 24px 44px; justify-content: space-between; }
+.onb-install { padding: max(16px, calc(124px - env(safe-area-inset-top))) 24px calc(44px + env(safe-area-inset-bottom)); justify-content: space-between; }
 .onb-install h1 { font-size: 44px; line-height: 44px; letter-spacing: -0.04em; }
 .onb-phone {
   align-self: center;
@@ -1543,7 +1572,7 @@ button.habit-row.habit-add { cursor: pointer; border-top: 0.5px solid var(--hair
 .onb-waiting .serif { font-size: 20px; color: rgba(255, 255, 255, 0.85); }
 
 /* ---- Step: who ---- */
-.onb-who { padding: 124px 24px 48px; gap: 28px; justify-content: flex-start; }
+.onb-who { padding: max(16px, calc(124px - env(safe-area-inset-top))) 24px calc(48px + env(safe-area-inset-bottom)); gap: 28px; justify-content: flex-start; }
 .onb-who h1 { font-size: 46px; line-height: 46px; letter-spacing: -0.04em; }
 .person-pick { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .person-btn {
@@ -1584,7 +1613,7 @@ button.habit-row.habit-add { cursor: pointer; border-top: 0.5px solid var(--hair
 }
 
 /* ---- Step: color ---- */
-.onb-color { padding: 118px 22px 44px; justify-content: space-between; }
+.onb-color { padding: max(16px, calc(118px - env(safe-area-inset-top))) 22px calc(44px + env(safe-area-inset-bottom)); justify-content: space-between; }
 .onb-color .copy { display: flex; flex-direction: column; gap: 10px; }
 .onb-color h1 { font-size: 60px; line-height: 60px; letter-spacing: -0.05em; }
 .onb-color .lede {
@@ -1680,7 +1709,7 @@ button.habit-row.habit-add { cursor: pointer; border-top: 0.5px solid var(--hair
 .onb-color .btn { height: 60px; align-self: stretch; max-width: none; }
 
 /* ---- Step: handshake ---- */
-.onb-token { padding: 124px 24px 48px; justify-content: space-between; }
+.onb-token { padding: max(16px, calc(124px - env(safe-area-inset-top))) 24px calc(48px + env(safe-area-inset-bottom)); justify-content: space-between; }
 .onb-token .copy { display: flex; flex-direction: column; gap: 10px; }
 .onb-token h1 { font-size: 50px; line-height: 50px; letter-spacing: -0.045em; }
 .onb-token .lede {
@@ -1784,7 +1813,7 @@ button.habit-row.habit-add { cursor: pointer; border-top: 0.5px solid var(--hair
 .onb-token .btn.pop { animation: onb-pop 480ms var(--spring-onb) both; }
 
 /* ---- Step: pour ---- */
-.onb-pour { padding: 124px 24px 56px; justify-content: space-between; }
+.onb-pour { padding: max(16px, calc(124px - env(safe-area-inset-top))) 24px calc(56px + env(safe-area-inset-bottom)); justify-content: space-between; }
 .onb-pour .copy { display: flex; flex-direction: column; gap: 10px; }
 .onb-pour .kicker { font-size: 26px; color: rgba(255, 255, 255, 0.85); font-weight: 500; }
 .onb-pour h1 { font-size: 54px; line-height: 52px; letter-spacing: -0.05em; }
@@ -1861,7 +1890,7 @@ button.habit-row.habit-add { cursor: pointer; border-top: 0.5px solid var(--hair
 @keyframes pf-bubble { 0% { transform: translateY(0) scale(0.6); opacity: 0; } 15% { opacity: 0.9; } 100% { transform: translateY(-700px) scale(1.2); opacity: 0; } }
 
 /* ---- Step: done ---- */
-.onb-done { padding: 150px 24px 48px; justify-content: space-between; z-index: 6; }
+.onb-done { padding: max(16px, calc(150px - env(safe-area-inset-top))) 24px calc(48px + env(safe-area-inset-bottom)); justify-content: space-between; z-index: 6; }
 .onb-done .copy { display: flex; flex-direction: column; gap: 12px; }
 .onb-done .kicker { font-size: 30px; color: rgba(255, 255, 255, 0.9); font-weight: 500; }
 .onb-done h1 {
