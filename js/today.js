@@ -62,12 +62,23 @@ var Today = (function () {
   function dayFraction(dateStr, personId) {
     var entries = Data.getCached(dateStr, personId) || {};
     var habits = Store.get("habits").habits;
-    var met = 0, total = 0;
+    var sum = 0, total = 0;
     habits.forEach(function (h) {
-      var r = habitMet(h, personId, entries);
-      if (r !== null) { total++; if (r) met++; }
+      var p = habitProgress(h, personId, entries);
+      if (p !== null) { total++; sum += p; }
     });
-    return total ? met / total : 0;
+    return total ? sum / total : 0;
+  }
+
+  // Partial progress toward a daily sync-eligible habit, 0..1.
+  // Null when the habit is not evaluated for this person/day.
+  function habitProgress(habit, personId, entries) {
+    if (habit.period !== "day" || !habit.syncEligible) return null; // not evaluated
+    var v = entries ? entries[habit.id] : undefined;
+    var target = habit.targets[personId];
+    if (habit.syncRule === "if-logged" && (v === undefined || v === null)) return null; // excluded
+    if (!target) return null;
+    return Math.min((v || 0) / target, 1);
   }
 
   function ringSVG(frac, color, size) {
@@ -101,8 +112,8 @@ var Today = (function () {
       '<path d="M0 5 Q15 1 30 5 T60 5 T90 5 T120 5 T150 5 T180 5 T210 5 T240 5 V10 H0 Z" fill="' + fill + '"/></svg>';
   }
 
-  function chipHTML(personId, valueText) {
-    return '<span class="t-chip">' + avatarHTML(personId, 20) +
+  function chipHTML(personId, valueText, small) {
+    return '<span class="t-chip' + (small ? " t-chip-sm" : "") + '">' + avatarHTML(personId, small ? 18 : 22) +
       '<span class="t-chip-val num">' + esc(valueText) + "</span></span>";
   }
 
@@ -113,8 +124,34 @@ var Today = (function () {
     return k + "k";
   }
 
+  // Full grouped format for the tile's main number ("4,200"), matching the
+  // mockup. The partner chip keeps the compact fmtSteps ("6.5k").
+  function fmtStepsFull(n) {
+    if (n === undefined || n === null) return "--";
+    return Number(n).toLocaleString("en-US");
+  }
+
   function glowFor(personId) {
     return Colors.get(Store.getColorId(personId)).base + "8C"; // 55% alpha
+  }
+
+  // Accessible ink + tint for the viewer's person color, per theme.
+  // The mockups paint labels, tabs, nudges and actions in the ink shade;
+  // Store.applyColor only sets --person/--partner, so refine here at render.
+  function hexA(hex, a) {
+    var h = String(hex).replace("#", "");
+    if (h.length === 3) h = h.split("").map(function (c) { return c + c; }).join("");
+    var r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16);
+    return "rgba(" + r + "," + g + "," + b + "," + a + ")";
+  }
+
+  function paintInkVars() {
+    var me = Store.get("person");
+    var c = Colors.get(Store.getColorId(me));
+    var dark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    var root = document.documentElement;
+    root.style.setProperty("--me-ink", dark ? c.inkDark : c.inkLight);
+    root.style.setProperty("--me-tint", hexA(c.base, dark ? 0.22 : 0.14));
   }
 
   var ICONS = {
@@ -153,7 +190,9 @@ var Today = (function () {
     var sheet = document.createElement("div");
     sheet.className = "sheet glass";
     sheet.setAttribute("role", "dialog");
-    sheet.innerHTML = "<h2>" + esc(title) + "</h2>" +
+    sheet.innerHTML = '<span class="grab" aria-hidden="true"></span>' +
+      '<div class="sheet-headrow"><span class="sheet-title">' + esc(title) + "</span>" +
+      '<button class="sheet-x" aria-label="Close"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></div>' +
       (sub ? '<p class="sheet-sub">' + esc(sub) + "</p>" : "") + bodyHTML;
     document.body.appendChild(scrim);
     document.body.appendChild(sheet);
@@ -172,6 +211,8 @@ var Today = (function () {
       }, 240);
     }
     scrim.addEventListener("click", close);
+    var xBtn = sheet.querySelector(".sheet-x");
+    if (xBtn) xBtn.addEventListener("click", close);
     return { el: sheet, close: close };
   }
 
@@ -255,6 +296,8 @@ var Today = (function () {
     var st = statusFor(dateStr, me, partner);
     var youColor = Store.personColor(me);
     var pColor = partner ? Store.personColor(partner) : "transparent";
+    var tubeYouBg = synced ? "linear-gradient(90deg," + youColor + ",#BF5AF2)" : youColor;
+    var tubePaBg = synced ? "linear-gradient(90deg,#BF5AF2," + pColor + ")" : pColor;
     return '<section class="together-card glass' + (synced ? " synced" : "") + '" id="tg-card"' +
       enterCls(2) + enterDelay(2) + ' aria-label="Together">' +
       '<div class="tg-head"><span class="tg-label">TOGETHER</span>' +
@@ -262,13 +305,12 @@ var Today = (function () {
       '<div class="tg-mid">' +
       sphereHTML(me, myFrac, "w6", "You", "me") +
       '<div class="tube" role="img" aria-label="Progress toward the middle">' +
-      '<span class="tube-fill tube-you" style="width:' + (myFrac * 50) + "%;background:" + youColor + '"></span>' +
-      '<span class="tube-fill tube-partner" style="width:' + (pFrac * 50) + "%;background:" + pColor + '"></span>' +
+      '<span class="tube-fill tube-you" style="width:' + (myFrac * 50) + "%;background:" + tubeYouBg + '"></span>' +
+      '<span class="tube-fill tube-partner" style="width:' + (pFrac * 50) + "%;background:" + tubePaBg + '"></span>' +
       '<span class="tube-sync" style="--you:' + youColor + ";--partner:" + pColor + '"></span>' +
       "</div>" +
       (partner ? sphereHTML(partner, pFrac, "w7", Store.personName(partner), "partner") : "") +
       "</div>" +
-      '<div class="tg-div"></div>' +
       '<div class="tg-foot"><span class="tg-line">' + esc(st.line) + "</span>" +
       '<button class="nudge glass' + (st.showNudge ? "" : " hidden") + '" id="nudge-btn">Nudge</button>' +
       "</div></section>";
@@ -302,6 +344,10 @@ var Today = (function () {
     paintSphere(card, "partner", pFrac);
     card.querySelector(".tube-you").style.width = (myFrac * 50) + "%";
     card.querySelector(".tube-partner").style.width = (pFrac * 50) + "%";
+    var youColor = Store.personColor(me);
+    var pColor = partner ? Store.personColor(partner) : "transparent";
+    card.querySelector(".tube-you").style.background = synced ? "linear-gradient(90deg," + youColor + ",#BF5AF2)" : youColor;
+    card.querySelector(".tube-partner").style.background = synced ? "linear-gradient(90deg,#BF5AF2," + pColor + ")" : pColor;
     card.querySelector(".tg-line").textContent = st.line;
     var nb = card.querySelector("#nudge-btn");
     if (nb) nb.classList.toggle("hidden", !st.showNudge);
@@ -385,15 +431,15 @@ var Today = (function () {
     var pText = (pVal === undefined || pVal === null) ? "not yet" : pVal + "/" + habit.targets[partner];
     var pct = Math.min(val / target, 1);
     var done = val >= target;
-    return '<button class="tile tile-water' + (done ? " has-badge" : "") + '" data-habit="water" style="--tint:' + TINTS.water + '" aria-label="' + esc(waterLabel(habit, val, me, partner)) + '">' +
+    return '<button class="tile tile-water' + (done ? " has-badge" : "") + '" data-habit="water" style="--tint:' + TINTS.water + ';" aria-label="' + esc(waterLabel(habit, val, me, partner)) + '">' +
       '<span class="t-liquid" aria-hidden="true"><span class="t-liquid-fill js-wfill" style="height:' + (6 + 60 * pct) + '%">' +
-      waveSVG("rgba(140,220,255,0.9)", "wfill") +
+      waveSVG("var(--water-top)", "wfill") +
       '<i class="bub b1"></i><i class="bub b2"></i><i class="bub b3"></i><i class="bub b4"></i>' +
       "</span></span>" +
-      '<span class="t-top"><span class="t-label deep-water">' + ICONS.water + "Water</span>" +
-      (partner ? chipHTML(partner, pText) : "") + "</span>" +
-      '<span class="t-bottom"><span class="w-num num"><span class="js-wval">' + val + "</span><small> / " + target + "</small></span>" +
+      '<span class="t-topgroup"><span class="t-label deep-water">' + ICONS.water + "Water</span>" +
+      '<span class="w-num num"><span class="js-wval">' + val + "</span><small> / " + target + "</small></span>" +
       '<span class="t-cap">glasses &middot; tap to pour</span></span>' +
+      (partner ? '<span class="t-foot">' + chipHTML(partner, pText) + "</span>" : "") +
       '<span class="t-check js-wcheck' + (done ? "" : " hidden") + '" aria-hidden="true">' + ICONS.badge + "</span>" +
       "</button>";
   }
@@ -421,7 +467,7 @@ var Today = (function () {
     var r = tileEl.getBoundingClientRect();
     var x = e && e.clientX ? (e.clientX - r.left) : r.width / 2;
     var s = document.createElement("span");
-    s.className = "float1 num";
+    s.className = "floatup num";
     s.textContent = "+1";
     s.style.left = Math.max(8, Math.min(r.width - 40, x - 12)) + "px";
     s.style.top = "46%";
@@ -451,9 +497,9 @@ var Today = (function () {
     var pn = partner ? weekCount(habit, dateStr, partner) : 0;
     var vials = "";
     for (var i = 0; i < target; i++) vials += '<span class="vial"><i></i></span>';
-    return '<button class="tile tile-ex" data-habit="exercise" style="--tint:' + TINTS.exercise + '" aria-label="' + esc(exerciseLabel(habit, n, me, partner)) + '">' +
+    return '<button class="tile tile-ex" data-habit="exercise" style="--tint:' + TINTS.exercise + ';" aria-label="' + esc(exerciseLabel(habit, n, me, partner)) + '">' +
       '<span class="t-top"><span class="t-label deep-exercise">' + ICONS.exercise + "Exercise</span>" +
-      (partner ? chipHTML(partner, pn + "/" + habit.targets[partner]) : "") + "</span>" +
+      (partner ? chipHTML(partner, pn + "/" + habit.targets[partner], true) : "") + "</span>" +
       '<span class="x-num num"><span class="js-xval">' + n + "</span><small> / " + target + "</small></span>" +
       '<span class="t-cap">this week</span>' +
       '<span class="vials js-vials" aria-hidden="true">' + vials + "</span>" +
@@ -477,23 +523,22 @@ var Today = (function () {
   }
 
   function stepsLabel(habit, val, me, partner) {
-    var s = "Steps: " + fmtSteps(val) + " of " + Number(habit.targets[me]).toLocaleString() + " goal.";
+    var s = "Steps: " + fmtStepsFull(val) + " of " + Number(habit.targets[me]).toLocaleString() + " goal.";
     if (partner) {
       var pVal = Data.value(viewedDate(), partner, habit.id);
-      s += " " + Store.personName(partner) + ": " + ((pVal === undefined || pVal === null) ? "not yet" : fmtSteps(pVal)) + ".";
+      s += " " + Store.personName(partner) + ": " + ((pVal === undefined || pVal === null) ? "not yet" : fmtStepsFull(pVal)) + ".";
     }
     return s + " Tap to log steps.";
   }
 
   function trailSVG(progress) {
     var off = (100 * (1 - Math.min(progress, 1))).toFixed(1);
-    return '<svg class="trail" viewBox="0 0 140 64" aria-hidden="true">' +
-      '<defs><linearGradient id="trail-g" x1="0" y1="0" x2="1" y2="0">' +
-      '<stop offset="0" stop-color="#30D158"/><stop offset="1" stop-color="#63E6BE"/>' +
-      "</linearGradient></defs>" +
-      '<path d="M8 52 C 36 52, 36 12, 70 12 S 104 52, 132 52" pathLength="100" fill="none" ' +
-      'stroke="url(#trail-g)" stroke-width="6" stroke-linecap="round" stroke-dasharray="100" ' +
-      'stroke-dashoffset="' + off + '" class="js-trail"/></svg>';
+    return '<svg class="trail" viewBox="0 0 140 38" aria-hidden="true">' +
+      '<path d="M6 30 C 40 30, 40 8, 70 8 S 100 30, 134 30" pathLength="100" fill="none" ' +
+      'stroke="rgba(127,127,140,0.25)" stroke-width="6" stroke-linecap="round"/>' +
+      '<path d="M6 30 C 40 30, 40 8, 70 8 S 100 30, 134 30" pathLength="100" fill="none" ' +
+      'style="stroke:var(--steps-ink)" stroke-width="6" stroke-linecap="round" ' +
+      'stroke-dasharray="100" stroke-dashoffset="' + off + '" class="js-trail"/></svg>';
   }
 
   function stepsTile(habit, dateStr, me, partner) {
@@ -502,10 +547,12 @@ var Today = (function () {
     var pVal = partner ? Data.value(dateStr, partner, habit.id) : undefined;
     var pText = (pVal === undefined || pVal === null) ? "not yet" : fmtSteps(pVal);
     var progress = (val === undefined || val === null) ? 0 : Math.min(val / target, 1);
+    var done = val !== undefined && val !== null && val >= target;
     return '<button class="tile tile-steps" data-habit="steps" style="--tint:' + TINTS.steps + '" aria-label="' + esc(stepsLabel(habit, val, me, partner)) + '">' +
       '<span class="t-top"><span class="t-label deep-steps">' + ICONS.steps + "Steps</span>" +
-      (partner ? chipHTML(partner, pText) : "") + "</span>" +
-      '<span class="s-num num js-sval">' + fmtSteps(val) + "</span>" +
+      (partner ? chipHTML(partner, pText, true) : "") + "</span>" +
+      '<span class="s-numrow"><span class="s-num num js-sval">' + fmtStepsFull(val) + "</span>" +
+      '<span class="s-done js-sdone' + (done ? "" : " hidden") + '" aria-hidden="true">' + ICONS.badge + "</span></span>" +
       trailSVG(progress) +
       "</button>";
   }
@@ -513,9 +560,19 @@ var Today = (function () {
   function paintSteps(tileEl, habit, val) {
     var me = Store.get("person");
     var target = habit.targets[me];
-    tileEl.querySelector(".js-sval").textContent = fmtSteps(val);
+    tileEl.querySelector(".js-sval").textContent = fmtStepsFull(val);
     var progress = (val === undefined || val === null) ? 0 : Math.min(val / target, 1);
     tileEl.querySelector(".js-trail").style.strokeDashoffset = (100 * (1 - progress)).toFixed(1);
+    var done = val !== undefined && val !== null && val >= target;
+    var badge = tileEl.querySelector(".js-sdone");
+    if (done && badge.classList.contains("hidden")) {
+      badge.classList.remove("hidden", "pop");
+      void badge.offsetWidth;
+      badge.classList.add("pop");
+    } else if (!done) {
+      badge.classList.add("hidden");
+      badge.classList.remove("pop");
+    }
     tileEl.setAttribute("aria-label", stepsLabel(habit, val, me, Store.partnerId()));
   }
 
@@ -525,7 +582,7 @@ var Today = (function () {
     var label = esc(habit.name) + ": " + (on ? "done" : "not yet") + ". Tap to toggle.";
     return '<button class="tile tile-generic" data-habit="' + esc(habit.id) + '" style="--tint:' + (TINTS[habit.id] || "#A259FF") + '" aria-label="' + label + '">' +
       '<span class="t-top"><span class="t-label">' + ICONS.check + esc(habit.name) + "</span>" +
-      (partner ? chipHTML(partner, pOn ? "done" : "not yet") : "") + "</span>" +
+      (partner ? chipHTML(partner, pOn ? "done" : "not yet", true) : "") + "</span>" +
       '<span class="g-state num js-gstate">' + (on ? "Done" : "Not yet") + "</span>" +
       "</button>";
   }
@@ -873,6 +930,7 @@ var Today = (function () {
   function paint(dateStr, me, partner, habitList) {
     var root = document.getElementById("today-root");
     if (!root) return;
+    paintInkVars();
 
     root.innerHTML =
       headerHTML(dateStr, me, partner) +
@@ -925,6 +983,7 @@ var Today = (function () {
     render: render,
     habitMet: habitMet,
     dayFraction: dayFraction,
-    ringSVG: ringSVG
+    ringSVG: ringSVG,
+    paintInkVars: paintInkVars
   };
 })();
