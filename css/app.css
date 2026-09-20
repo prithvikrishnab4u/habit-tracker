@@ -2139,3 +2139,150 @@ button.habit-row.habit-add { cursor: pointer; border-top: 0.5px solid var(--hair
   font-weight: 600;
 }
 .meal-save { margin-top: 8px; }
+
+/* ---------- v2 Phase C: Backlog ---------- */
+#backlog-root { display: flex; flex-direction: column; gap: 14px; }
+.bl-head {
+  display: flex; align-items: center; gap: 10px;
+  margin: 0;
+}
+.bl-head h2 {
+  font-family: var(--font-display, var(--font-text));
+  font-size: 28px; font-weight: 700; letter-spacing: -0.02em;
+  margin: 0; color: var(--ink);
+}
+.bl-count {
+  font-size: 14px; font-weight: 600; color: var(--ink-60);
+  font-variant-numeric: tabular-nums;
+}
+.bl-addbtn {
+  margin-left: auto;
+  width: 40px; height: 40px; border-radius: 999px;
+  border: var(--hairline); background: var(--glass-strong);
+  color: var(--me-ink); cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: var(--shadow-sm);
+}
+.bl-addbtn svg { width: 18px; height: 18px; }
+.bl-addbtn:active { transform: scale(0.95); }
+.bl-loading { color: var(--ink-60); font-size: 15px; padding: 24px 0; text-align: center; }
+.bl-empty { border-radius: 20px; padding: 28px 20px; text-align: center; }
+.bl-empty p { margin: 0 0 6px; font-size: 17px; font-weight: 600; color: var(--ink); }
+.bl-empty .bl-emptysub { font-size: 14px; font-weight: 400; color: var(--ink-60); margin: 0; }
+.bl-list { display: flex; flex-direction: column; gap: 10px; }
+.bl-row {
+  display: flex; align-items: center; gap: 10px;
+  border-radius: 18px; padding: 12px 12px 12px 16px;
+}
+.bl-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.bl-what {
+  font-size: 16px; font-weight: 600; color: var(--ink);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.bl-meta { display: flex; align-items: center; gap: 8px; }
+.bl-sizechip {
+  font-size: 12px; font-weight: 700; color: var(--me-ink);
+  background: var(--me-tint); border-radius: 999px; padding: 3px 10px;
+  font-variant-numeric: tabular-nums;
+}
+.bl-tag {
+  height: 28px; padding: 0 12px; border-radius: 999px;
+  border: var(--hairline); background: transparent;
+  font-size: 13px; font-weight: 600; color: var(--ink);
+  cursor: pointer; font-family: var(--font-text);
+}
+.bl-tag.none { color: var(--ink-60); border-style: dashed; }
+.bl-del {
+  width: 32px; height: 32px; border-radius: 999px; flex: none;
+  border: 0; background: transparent; color: var(--ink-60);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+.bl-del svg { width: 12px; height: 12px; }
+.bl-del:active { transform: scale(0.9); }
+
+/* Add sheet */
+.bl-add { display: flex; flex-direction: column; gap: 14px; }
+.bl-input {
+  min-height: 52px; border-radius: 16px; padding: 0 16px;
+  border: var(--hairline); background: var(--glass-bg);
+  font-family: var(--font-text); font-size: 17px; color: var(--ink);
+}
+.bl-input::placeholder { color: var(--ink-40, var(--ink-60)); }
+.bl-sizes { display: flex; gap: 8px; }
+.bl-size {
+  flex: 1; height: 44px; border-radius: 999px;
+  border: var(--hairline); background: var(--glass-bg);
+  font-family: var(--font-text); font-size: 15px; font-weight: 600; color: var(--ink);
+  cursor: pointer;
+}
+.bl-size.on { background: var(--me-tint); color: var(--me-ink); border-color: transparent; }
+.bl-save { margin-top: 2px; }
+
+/* Full state: drop one first */
+.bl-full { display: flex; flex-direction: column; gap: 8px; max-height: 40vh; overflow-y: auto; }
+.bl-fullrow {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 4px; border-bottom: var(--hairline);
+}
+.bl-fullwhat {
+  flex: 1; min-width: 0; font-size: 15px; color: var(--ink);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.bl-drop {
+  height: 34px; padding: 0 16px; border-radius: 999px; flex: none;
+  border: var(--hairline); background: transparent;
+  font-family: var(--font-text); font-size: 14px; font-weight: 600; color: var(--ink);
+  cursor: pointer;
+}
+
+/* ---------- v2 Phase C: "Got a gap?" card on Today ---------- */
+.gap-card {
+  border-radius: 22px; padding: 16px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.gap-head { display: flex; align-items: center; }
+.gap-title { font-size: 17px; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
+.gap-sizes { display: flex; gap: 8px; }
+.gap-size {
+  flex: 1; height: 44px; border-radius: 999px;
+  border: var(--hairline); background: var(--glass-bg);
+  font-family: var(--font-text); font-size: 15px; font-weight: 600; color: var(--ink);
+  cursor: pointer;
+}
+.gap-size.on { background: var(--me-tint); color: var(--me-ink); border-color: transparent; }
+.gap-tags { display: flex; gap: 8px; flex-wrap: wrap; }
+.gap-tag {
+  height: 34px; padding: 0 14px; border-radius: 999px;
+  border: var(--hairline); background: transparent;
+  font-family: var(--font-text); font-size: 13px; font-weight: 600; color: var(--ink-60);
+  cursor: pointer;
+}
+.gap-tag.on { background: var(--ink-10, var(--ink-5)); color: var(--ink); border-color: transparent; }
+.gap-results { display: flex; flex-direction: column; gap: 8px; }
+.gap-hint { margin: 0; font-size: 14px; color: var(--ink-60); }
+.gap-pick {
+  display: flex; align-items: center; gap: 10px;
+  min-height: 48px; border-radius: 14px; padding: 8px 12px;
+  border: var(--hairline); background: var(--glass-bg);
+  font-family: var(--font-text); cursor: pointer; text-align: left;
+}
+.gap-pickwhat {
+  flex: 1; min-width: 0; font-size: 15px; font-weight: 600; color: var(--ink);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.gap-pick.sel { border-color: var(--me-ink); box-shadow: 0 0 0 1px var(--me-ink); }
+.gap-shuffle {
+  align-self: flex-start; height: 36px; padding: 0 16px; border-radius: 999px;
+  border: var(--hairline); background: transparent;
+  font-family: var(--font-text); font-size: 14px; font-weight: 600; color: var(--ink);
+  cursor: pointer;
+}
+.gap-add {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  min-height: 48px; border-radius: 999px;
+  border: var(--hairline); background: transparent;
+  font-family: var(--font-text); font-size: 15px; font-weight: 600; color: var(--me-ink);
+  cursor: pointer;
+}
+.gap-add svg { width: 16px; height: 16px; }
+.gap-add:active { transform: scale(0.98); }
