@@ -1,0 +1,516 @@
+/* Shared foundation: tokens, reset, wallpaper, glass, app frame, tab bar,
+   buttons, toast, bottom sheets, touch feedback. Screen styles live in
+   their own files. */
+
+/* Habit Tracker - visual port of the approved mockups.
+   Literal values (dimensions, radii, gradients, stops, opacity, shadows,
+   typography, tracking, keyframes, timing) come from:
+     mockup-today-sync-habits.html   (Today / Sync / Habits)
+     mockup-onboarding.html          (Setup flow)
+   Person-color liquid (Today spheres, color-picker spheres, pour glass)
+   uses the color spec 3-stop gradient (full-opacity hex), which wins over
+   the mockups' partial-opacity liquids: linear-gradient(180deg,
+   var(--liq-top) 0%, var(--liq-base) 18%, var(--liq-bottom) 100%).
+   Habit liquids keep their own colors and never take person colors: the
+   water tile stays translucent cyan-to-blue per the look recipe, and the
+   exercise vials use the fixed pink-to-purple gradient. */
+
+:root {
+  --font-text: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+  --font-num: ui-rounded, "SF Pro Rounded", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-onb: -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Segoe UI", sans-serif;
+  --ease: cubic-bezier(.22, 1, .36, 1);
+  --spring: linear(0, 0.3 8%, 0.75 18%, 1.01 30%, 1.04 40%, 1.01 55%, 1);
+  --spring-onb: linear(0, 0.25 8%, 0.68 18%, 1.02 30%, 1.1 38%, 1.06 48%, 0.99 62%, 1.005 78%, 1);
+  --person: #0A84FF;            /* replaced at runtime by chosen person color */
+  --partner: #FF9F0A;
+  --me-ink: #409CFF;            /* accessible colored text; refined per color+theme by paintInkVars */
+  --me-tint: rgba(10, 132, 255, 0.22);
+  --ex-tint: linear-gradient(160deg, rgba(191, 90, 242, 0.18), rgba(191, 90, 242, 0.02) 60%);
+  --ex-ink: #DA8FFF;
+  --steps-tint: linear-gradient(160deg, rgba(48, 209, 88, 0.16), rgba(48, 209, 88, 0.02) 60%);
+  --steps-ink: #30D158;
+  /* Habit liquids. Never person colors (color-spec section 7). */
+  --water-top: rgba(100, 210, 255, 0.34);
+  --water-bottom: rgba(10, 132, 255, 0.42);
+  --water-liq: linear-gradient(180deg, var(--water-top) 0%, var(--water-bottom) 100%);
+  --water-ink: #64D2FF;
+  --ex-liq: linear-gradient(180deg, #FF6482 0%, #BF5AF2 100%);
+
+  --canvas: #05060A;
+  --ink: #FFFFFF;
+  --ink-60: rgba(235, 235, 245, 0.6);
+  --ink-30: rgba(235, 235, 245, 0.3);
+  --glass: linear-gradient(135deg, rgba(255, 255, 255, 0.13) 0%, rgba(255, 255, 255, 0.05) 45%, rgba(255, 255, 255, 0.07) 100%);
+  --glass-strong: rgba(255, 255, 255, 0.14);
+  --hairline: 0.5px solid rgba(255, 255, 255, 0.24);
+  --shadow: inset 0 1px 0 rgba(255, 255, 255, 0.28), inset 0 -0.5px 0 rgba(255, 255, 255, 0.06), 0 18px 44px rgba(0, 0, 0, 0.4);
+  --shadow-sm: inset 0 1px 0 rgba(255, 255, 255, 0.24), 0 8px 24px rgba(0, 0, 0, 0.3);
+  --orb-opacity: 0.38;
+  --tube: rgba(255, 255, 255, 0.08);
+  --hair: rgba(255, 255, 255, 0.12);
+  --ring-bg: #05060A;
+  --sheet-bg: rgba(30, 30, 36, 0.62);
+  --destructive: #FF453A;
+  --tab-on: rgba(255, 255, 255, 0.16);
+  --blur: blur(30px) saturate(180%);
+  --sync-purple: #BF5AF2;
+  --cal-faint: rgba(255, 255, 255, 0.08);
+  /* Aliases used by Meals/Backlog styles. */
+  --glass-bg: rgba(255, 255, 255, 0.08);
+  /* Calm glass system. Screens use these; blur is reserved for the tab
+     bar, sheets, toast and status band. */
+  --surface: rgba(255, 255, 255, 0.07);
+  --surface-2: rgba(255, 255, 255, 0.10);
+  --separator: rgba(255, 255, 255, 0.12);
+  --sync: #BF5AF2;
+  --r-ctl: 10px;
+  --r-card: 16px;
+  --r-sheet: 28px;
+  --glass-blur: blur(24px) saturate(160%);
+  --wash: 12%;
+  --ink-3: var(--ink-30);
+  --ink-5: rgba(235, 235, 245, 0.05);
+  --ink-10: rgba(235, 235, 245, 0.1);
+  --ink-40: rgba(235, 235, 245, 0.4);
+  --ink-50: rgba(235, 235, 245, 0.5);
+  --you: var(--person);
+  --font-display: var(--font-text);
+  --error: var(--destructive);
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: light) {
+  :root {
+    --canvas: #EEF0F6;
+    --ink: #000000;
+    --ink-60: rgba(60, 60, 67, 0.6);
+    --ink-30: rgba(60, 60, 67, 0.3);
+    --glass: linear-gradient(135deg, rgba(255, 255, 255, 0.78) 0%, rgba(255, 255, 255, 0.46) 50%, rgba(255, 255, 255, 0.58) 100%);
+    --glass-strong: rgba(255, 255, 255, 0.72);
+    --hairline: 0.5px solid rgba(255, 255, 255, 0.95);
+    --shadow: inset 0 1px 0 rgba(255, 255, 255, 1), 0 16px 40px rgba(30, 30, 70, 0.1);
+    --shadow-sm: inset 0 1px 0 rgba(255, 255, 255, 1), 0 6px 18px rgba(30, 30, 70, 0.08);
+    --orb-opacity: 0.30;
+    --tube: rgba(60, 60, 67, 0.08);
+    --hair: rgba(60, 60, 67, 0.14);
+    --ring-bg: #EEF0F6;
+    --sheet-bg: rgba(250, 250, 252, 0.72);
+    --destructive: #FF3B30;
+    --tab-on: rgba(0, 0, 0, 0.06);
+    --me-ink: #007AFF;
+    --me-tint: rgba(0, 122, 255, 0.14);
+    --ex-tint: linear-gradient(160deg, rgba(175, 82, 222, 0.14), rgba(175, 82, 222, 0.02) 60%);
+    --ex-ink: #8944AB;
+    --steps-tint: linear-gradient(160deg, rgba(52, 199, 89, 0.14), rgba(52, 199, 89, 0.02) 60%);
+    --steps-ink: #248A3D;
+    --water-top: rgba(90, 200, 250, 0.35);
+    --water-bottom: rgba(0, 122, 255, 0.32);
+    --water-ink: #0071A4;
+    --ex-liq: linear-gradient(180deg, #FF2D55 0%, #AF52DE 100%);
+    --cal-faint: rgba(60, 60, 67, 0.08);
+    --glass-bg: rgba(255, 255, 255, 0.6);
+    --surface: rgba(255, 255, 255, 0.72);
+    --surface-2: rgba(118, 118, 128, 0.12);
+    --separator: rgba(60, 60, 67, 0.14);
+    --wash: 8%;
+    --ink-5: rgba(60, 60, 67, 0.05);
+    --ink-10: rgba(60, 60, 67, 0.1);
+    --ink-40: rgba(60, 60, 67, 0.4);
+    --ink-50: rgba(60, 60, 67, 0.5);
+    color-scheme: light;
+  }
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+/* iOS only honors manipulation on the touched element's chain; apply it
+   everywhere so double-tap never zooms. Keep native rubber-band scrolling. */
+html, body, body * { touch-action: manipulation; }
+
+body {
+  font-family: var(--font-text);
+  background: var(--canvas);
+  color: var(--ink);
+  font-size: 17px;
+  line-height: 22px;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+button { font: inherit; color: inherit; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+
+.num { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+
+/* ---------- Wallpaper: static person-color washes ---------- */
+/* No blur filters and no animation: glass above it never has to re-blur. */
+#wallpaper {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(120% 60% at 0% 0%, color-mix(in srgb, var(--person) var(--wash), transparent), transparent 70%),
+    radial-gradient(120% 60% at 100% 0%, color-mix(in srgb, var(--partner) var(--wash), transparent), transparent 70%),
+    var(--canvas);
+}
+.orb { display: none; }
+
+/* ---------- Surfaces ---------- */
+/* .glass is kept as the class name for cards, but only #tabbar, .sheet,
+   #toast and the status band actually blur (see below). */
+.glass {
+  background: var(--surface);
+  border-radius: var(--r-card);
+}
+#tabbar, .sheet, #toast {
+  background: var(--sheet-bg);
+  border: var(--hairline);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+}
+
+/* ---------- App frame ---------- */
+#app {
+  position: relative;
+  z-index: 1;
+  max-width: 600px;
+  margin: 0 auto;
+  min-height: 100dvh;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) 0 env(safe-area-inset-left);
+}
+
+/* Fixed status bar band: covers content scrolling under the clock/battery.
+   Glass background + blur, above content, below sheets. */
+#statusbar-band {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: env(safe-area-inset-top);
+  background: var(--sheet-bg);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  z-index: 25;
+  pointer-events: none;
+}
+/* Show the band only with the tab shell (hidden during onboarding / load error). */
+body:has(#tabbar:not(.hidden)) #statusbar-band { display: block; }
+/* During onboarding, paint the dark scene under the status bar (light mode fix). */
+body:has(#screen-onboarding:not(.hidden)) { background: #0C0B14; }
+
+.screen {
+  padding: max(8px, calc(58px - env(safe-area-inset-top))) 16px calc(128px + env(safe-area-inset-bottom));
+  min-height: calc(100dvh - env(safe-area-inset-top));
+}
+
+.hidden { display: none !important; }
+
+/* ---------- Tab bar ---------- */
+#tabbar {
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(26px + env(safe-area-inset-bottom));
+  width: 300px;
+  max-width: calc(100% - 24px);
+  height: 64px;
+  border-radius: 999px;
+  display: flex;
+  padding: 4px;
+  z-index: 20;
+}
+
+.tab {
+  flex: 1 1 0;
+  border: 0;
+  background: none;
+  color: var(--ink-60);
+  font-family: var(--font-text);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  border-radius: 999px;
+  cursor: pointer;
+  min-height: 56px;
+  padding: 0;
+}
+
+.tab svg { width: 24px; height: 24px; }
+.tab span { font-size: 10px; font-weight: 600; }
+.tab.active { color: var(--me-ink); background: var(--tab-on); }
+.tab[aria-current="page"] { color: var(--me-ink); background: var(--tab-on); }
+
+/* ---------- Buttons ---------- */
+.btn {
+  display: block;
+  width: 100%;
+  max-width: 340px;
+  min-height: 52px;
+  border: 0;
+  border-radius: 18px;
+  background: var(--person);
+  color: #fff;
+  font-family: var(--font-text);
+  font-size: 17px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 120ms ease, opacity 120ms ease;
+}
+
+.btn:active { transform: scale(0.97); }
+.btn:disabled { opacity: 0.4; }
+
+.btn-ghost {
+  background: none;
+  color: var(--person);
+  margin-top: 8px;
+}
+
+/* ---------- Offline banner & toast ---------- */
+#offline-banner {
+  position: fixed;
+  top: calc(12px + env(safe-area-inset-top));
+  left: 16px; right: 16px;
+  max-width: 568px;
+  margin: 0 auto;
+  z-index: 40;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 600;
+  padding: 12px 16px;
+  border-radius: 18px;
+  background: rgba(255, 159, 10, 0.92);
+  color: #1C1C1E;
+}
+
+#toast {
+  position: fixed;
+  bottom: calc(104px + env(safe-area-inset-bottom));
+  left: 24px; right: 24px;
+  max-width: 552px;
+  margin: 0 auto;
+  z-index: 50;
+  min-height: 50px;
+  border-radius: 999px;
+  padding: 5px 5px 5px 20px;
+  font-size: 15px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--glass-strong);
+  border: var(--hairline);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  animation: toast-pop 200ms var(--ease) both;
+}
+
+@keyframes toast-pop { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+
+#toast .toast-action {
+  border: 0;
+  background: var(--me-tint);
+  color: var(--me-ink);
+  font-family: var(--font-text);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  height: 40px;
+  padding: 0 16px;
+  border-radius: 999px;
+  min-height: 40px;
+  flex-shrink: 0;
+}
+
+.pending-dot {
+  position: absolute;
+  top: 14px; right: 14px;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--ink-60);
+  z-index: 3;
+}
+
+
+/* ---------- Bottom sheets ---------- */
+.scrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+  z-index: 60;
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+.scrim.show { opacity: 1; }
+
+.sheet {
+  position: fixed;
+  left: 8px; right: 8px;
+  bottom: calc(8px + env(safe-area-inset-bottom));
+  max-width: 584px;
+  max-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 32px);
+  overflow-y: auto;
+  margin: 0 auto;
+  z-index: 61;
+  padding: 8px 20px 24px;
+  border-radius: var(--r-sheet);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  background: var(--sheet-bg);
+  border: var(--hairline);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  animation: sheetUp 320ms var(--ease) both;
+}
+@keyframes sheetUp { from { transform: translateY(105%); } to { transform: none; } }
+
+.sheet .grab {
+  align-self: center;
+  width: 36px; height: 5px;
+  border-radius: 3px;
+  background: var(--ink-30);
+  flex-shrink: 0;
+}
+.sheet h2 { font-size: 22px; line-height: 28px; font-weight: 700; letter-spacing: -0.02em; margin: 0; }
+.sheet .sheet-sub { color: var(--ink-60); font-size: 15px; margin: -12px 0 0; }
+.sheet-headrow { display: flex; align-items: center; justify-content: space-between; }
+.sheet-headrow .sheet-title { font-size: 17px; font-weight: 600; }
+.sheet-x {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  border: 0;
+  cursor: pointer;
+  background: var(--tube);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-60);
+  min-width: 32px;
+}
+.sheet-x svg { width: 12px; height: 12px; }
+
+.stepper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+.stepper button {
+  width: 64px; height: 64px;
+  border-radius: 50%;
+  border: 0;
+  background: var(--surface-2);
+  color: var(--ink);
+  font-family: var(--font-text);
+  font-size: 28px;
+  cursor: pointer;
+  min-width: 64px; min-height: 64px;
+}
+.stepper button:active { transform: scale(0.97); }
+
+.numrow { display: flex; align-items: center; justify-content: center; gap: 10px; margin: 8px 0 16px; }
+.numrow .num { font-size: 34px; font-weight: 600; line-height: 1.1; font-family: var(--font-num); font-variant-numeric: tabular-nums; }
+.numcap { font-size: 15px; color: var(--ink-60); }
+.chiprow { display: flex; gap: 8px; justify-content: center; margin-bottom: 20px; flex-wrap: wrap; }
+.qchip {
+  min-height: 44px;
+  height: 44px;
+  padding: 0 18px;
+  border-radius: var(--r-ctl);
+  border: 0;
+  background: var(--surface-2);
+  color: var(--ink);
+  font-family: var(--font-text);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.qchip:active { transform: scale(0.97); }
+.linkbtn { display: block; margin: 0 auto 16px; border: 0; background: none; color: var(--me-ink); font-family: var(--font-text); font-size: 15px; font-weight: 600; cursor: pointer; padding: 12px; min-height: 48px; }
+.exactrow { display: flex; gap: 8px; margin-bottom: 16px; }
+.exactrow .exactinput {
+  flex: 1;
+  margin: 0;
+  min-height: 52px;
+  border-radius: var(--r-ctl);
+  border: 0;
+  background: var(--surface-2);
+  color: var(--ink);
+  font-family: var(--font-text);
+  font-size: 17px;
+  padding: 0 16px;
+  user-select: text;
+  -webkit-user-select: text;
+}
+.exactrow .btn { margin: 0; max-width: none; width: auto; padding: 0 24px; }
+.weeklist { margin-bottom: 8px; }
+.weekrow { display: flex; align-items: center; justify-content: space-between; padding: 10px 2px; border-bottom: var(--hairline); }
+.weekrow:last-child { border-bottom: 0; }
+.weekday { font-size: 17px; }
+.wtog {
+  width: 48px; height: 48px;
+  border-radius: 50%;
+  border: 0;
+  background: var(--surface-2);
+  color: var(--ink);
+  font-size: 17px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 48px; min-height: 48px;
+}
+.wtog svg { width: 20px; height: 20px; }
+.wtog.on { background: var(--person); color: #fff; }
+.wtog:disabled { opacity: 0.35; }
+.sheet .btn { max-width: none; border-radius: 999px; }
+.sheet .btn.btn-green { background: #30D158; color: #FFFFFF; box-shadow: none; }
+
+/* ---------- Fallback: no backdrop-filter ---------- */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass, .sheet, #tabbar, #toast {
+    background: var(--canvas);
+  }
+  .orb { opacity: calc(var(--orb-opacity) * 0.5); }
+}
+
+.load-error { padding: 40px 24px; text-align: center; }
+.load-error p { margin-bottom: 16px; color: var(--ink-60); }
+
+
+/* ---------- Touch feedback & keyboard ---------- */
+.sheet { overscroll-behavior: contain; }
+body.kb-open #tabbar { display: none; }
+.tab:active, .seg button:active, .sheet-x:active, .meal-tag:active,
+.bl-size:active, .gap-size:active, .gap-tag:active, .wtog:active,
+.linkbtn:active, .dnav:active { opacity: 0.6; transition: none; }
+.sync-strip { -webkit-tap-highlight-color: transparent; font: inherit; color: inherit; }
+
+/* ---------- Calm glass shell ---------- */
+#tabbar { width: calc(100% - 32px); max-width: 400px; height: 60px; }
+.tab { min-height: 52px; gap: 3px; }
+.tab svg { width: 22px; height: 22px; }
+.tab span { font-size: 11px; line-height: 13px; }
+.tab.active, .tab[aria-current="page"] { background: none; color: var(--me-ink); }
+body.on-settings #tabbar { display: none; }
+
+/* Shared screen header: 34px title, one 15px line under it. */
+.screen-title, .sync-head h1 { font-size: 34px; line-height: 41px; font-weight: 700; letter-spacing: -0.02em; margin: 0; }
+.screen-sub, .sync-sub { font-size: 15px; line-height: 20px; color: var(--ink-60); margin: 2px 0 0; }
+
+/* Shared controls. */
+.chip, .seg button { border-radius: var(--r-ctl); }
+.btn { border-radius: 14px; }

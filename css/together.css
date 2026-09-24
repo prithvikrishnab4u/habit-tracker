@@ -1,0 +1,146 @@
+/* Together tab (was Sync): hero, calendar, streaks.
+   Header (.sync-head h1 / .sync-sub) is styled in base.css. */
+
+/* ---------- Together screen ---------- */
+#pod-root { display: flex; flex-direction: column; gap: 14px; }
+
+/* Hero: days in sync this month */
+.sync-hero {
+  padding: 20px;
+}
+.sync-hero-main { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.hero-label {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--ink-60);
+  margin: 0 0 2px;
+}
+.hero-num {
+  font-family: var(--font-num);
+  font-size: 34px;
+  line-height: 41px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.hero-sub { color: var(--ink-60); font-size: 15px; margin: 6px 0 0; white-space: nowrap; }
+.sync-hero-chips {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
+  padding-bottom: 4px;
+  flex-shrink: 0;
+}
+.hero-chip {
+  padding: 6px 12px;
+  border-radius: var(--r-ctl);
+  background: var(--surface-2);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Calendar month */
+.cal-card { border-radius: var(--r-card); padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.cal-top { display: flex; align-items: center; justify-content: space-between; padding: 0 2px; }
+.cal-title { font-size: 17px; font-weight: 600; color: var(--ink); }
+.cal-legend { display: flex; gap: 14px; font-size: 13px; color: var(--ink-60); padding: 0 2px; }
+.leg { display: inline-flex; align-items: center; gap: 6px; }
+.leg-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+.leg-both { background: var(--sync); }
+.leg-me { background: var(--person); }
+.leg-partner { background: var(--partner); }
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+}
+.cal-grid .dow {
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-30);
+}
+.cal-cell {
+  position: relative;
+  aspect-ratio: 1;
+  width: 100%;
+  max-width: 40px;
+  justify-self: center;
+  border-radius: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  background: none;
+  min-width: 0;
+}
+.cal-day {
+  font-size: 13px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-num);
+  color: var(--ink);
+}
+.cal-blank { background: none; }
+.cal-none .cal-day { color: var(--ink); }
+.cal-both { background: var(--sync); }
+.cal-both .cal-day { color: #fff; }
+.cal-future { background: none; }
+.cal-future .cal-day { color: var(--ink-30); }
+.cal-dot { width: 5px; height: 5px; border-radius: 50%; }
+.cal-dot-me { background: var(--person); }
+.cal-dot-partner { background: var(--partner); }
+.cal-today {
+  box-shadow: 0 0 0 1.5px var(--ink);
+}
+
+/* Streaks: vertical inset-grouped list, one row per habit */
+.streaks-sec h2 {
+  font-size: 22px;
+  line-height: 28px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 10px 4px 10px;
+  color: var(--ink);
+}
+.streak-list {
+  display: flex;
+  flex-direction: column;
+  padding: 0 16px;
+}
+.streak-row {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 0;
+  border-bottom: 0.5px solid var(--separator);
+}
+.streak-row:last-child { border-bottom: none; }
+.sr-name { font-size: 17px; font-weight: 600; margin: 0; color: var(--ink); }
+.sr-person {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sr-person .avatar { width: 22px; height: 22px; font-size: 11px; flex-shrink: 0; }
+.sr-bar { flex-grow: 1; height: 4px; border-radius: 2px; background: var(--surface-2); overflow: hidden; }
+.sr-bar span { display: block; height: 100%; border-radius: 2px; }
+.sr-val {
+  font-family: var(--font-num);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink-60);
+  font-variant-numeric: tabular-nums;
+  width: 32px;
+  text-align: right;
+}

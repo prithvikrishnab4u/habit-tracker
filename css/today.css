@@ -1,0 +1,320 @@
+/* Today screen (Calm glass): header, sync strip, sync moment, tiles, meals.
+   Neutral --surface cards, no blur; progress is --person, sync is --sync. */
+
+#today-root { display: flex; flex-direction: column; gap: 16px; }
+
+/* Shared avatar (also used by the Sync tab). */
+.avatar {
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 600;
+  flex: 0 0 auto;
+}
+
+/* ---------- Header ---------- */
+.today-head { display: flex; flex-direction: column; }
+.today-titlerow { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.gear-btn {
+  width: 44px; height: 44px;
+  margin-right: -10px;
+  border: 0; background: none;
+  color: var(--ink-60);
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.gear-btn svg { width: 24px; height: 24px; }
+.gear-btn:active { opacity: 0.6; }
+.date-nav { display: flex; align-items: center; margin: -10px 0 -10px -14px; }
+.date-nav .top-date { margin: 0; white-space: nowrap; }
+.dnav {
+  width: 36px; height: 44px;
+  border: 0; background: none;
+  color: var(--ink-60);
+  font-size: 22px; line-height: 1;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.dnav:disabled { opacity: 0.3; }
+.back-pill {
+  margin-top: 12px;
+  align-self: flex-start;
+  min-height: 36px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--ink);
+  font-family: var(--font-text);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.back-pill:active { opacity: 0.6; }
+
+/* ---------- Sync strip ---------- */
+@property --p { syntax: "<number>"; inherits: false; initial-value: 0; }
+
+.sync-strip {
+  background: var(--surface);
+  border-radius: var(--r-card);
+  padding: 12px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.strip-row { display: flex; align-items: center; gap: 8px; }
+.strip-person { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.strip-person[data-who="partner"] { flex-direction: row-reverse; }
+.strip-ring {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  background: conic-gradient(var(--c) calc(var(--p) * 1%), var(--surface-2) 0);
+  transition: --p 250ms var(--ease);
+}
+.strip-initial {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--c) 20%, var(--canvas));
+  color: var(--ink);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 600;
+}
+.strip-pct { font-size: 15px; line-height: 20px; font-weight: 600; min-width: 40px; }
+.strip-person[data-who="partner"] .strip-pct { text-align: right; }
+.strip-bar {
+  flex: 1 1 0;
+  min-width: 24px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  position: relative;
+  overflow: hidden;
+}
+.strip-fill { position: absolute; top: 0; bottom: 0; transition: width 250ms var(--ease), background-color 250ms var(--ease); }
+.strip-fill-me { left: 0; background-color: var(--you); }
+.strip-fill-partner { right: 0; background-color: var(--them); }
+.strip-mid { position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--ink-30); }
+.sync-strip.synced .strip-fill { background-color: var(--sync); }
+.strip-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 32px; }
+.strip-status {
+  font-size: 13px; line-height: 18px;
+  color: var(--ink-60);
+  min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.strip-status.is-sync { color: var(--sync); font-weight: 600; }
+.nudge {
+  position: relative;
+  flex-shrink: 0;
+  height: 32px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--me-tint);
+  color: var(--me-ink);
+  font-family: var(--font-text);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.nudge::after { content: ""; position: absolute; inset: -6px -4px; }
+.nudge:active { opacity: 0.6; }
+
+/* ---------- Sync moment: the drop-down pill only ---------- */
+.sync-drop {
+  position: fixed;
+  top: calc(12px + env(safe-area-inset-top));
+  left: 50%;
+  transform: translate(-50%, -24px);
+  z-index: 56;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  padding: 0 16px 0 8px;
+  border-radius: 999px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+  background: color-mix(in srgb, var(--sync) 14%, var(--canvas));
+  border: 0.5px solid color-mix(in srgb, var(--sync) 40%, transparent);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  opacity: 0;
+  transition: opacity 250ms var(--ease), transform 250ms var(--ease);
+  pointer-events: none;
+}
+.sync-drop.go { opacity: 1; transform: translate(-50%, 0); }
+.sd-avatars { display: flex; align-items: center; }
+.sd-avatars .avatar + .avatar { margin-left: -8px; }
+
+/* ---------- Loading skeleton (static) ---------- */
+.skel { border-radius: var(--r-card); background: var(--surface); }
+.skel-head { height: 64px; }
+.skel-card { height: 104px; margin: 16px 0; }
+.skel-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.skel-tile { height: 128px; }
+
+/* ---------- Tile grid ---------- */
+.tile-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: minmax(128px, auto); gap: 12px; }
+.tile {
+  position: relative;
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--r-card);
+  background: var(--surface);
+  padding: 16px 16px 28px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 8px;
+  text-align: left;
+  color: var(--ink);
+  font-family: var(--font-text);
+  cursor: pointer;
+  transition: transform 100ms var(--ease);
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.tile.pressing { transform: scale(0.97); }
+.tile:focus-visible { outline: 2px solid var(--person); outline-offset: 2px; }
+
+.t-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
+.t-label {
+  font-size: 15px; line-height: 20px; font-weight: 600;
+  min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.t-main { display: flex; flex-direction: column; gap: 2px; }
+.t-numrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.t-num {
+  font-family: var(--font-num);
+  font-size: 28px; line-height: 34px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.t-cap { font-size: 13px; line-height: 18px; color: var(--ink-60); }
+
+/* Partner chip: 18px avatar + value */
+.t-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  font-size: 13px; line-height: 18px;
+  color: var(--ink-60);
+  white-space: nowrap;
+}
+.t-chip .avatar { width: 18px; height: 18px; font-size: 11px; }
+
+/* Bottom progress bar, --person, on every tile */
+.t-bar {
+  position: absolute;
+  left: 16px; right: 16px; bottom: 12px;
+  height: 4px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--surface-2);
+}
+.t-bar i {
+  display: block;
+  height: 100%;
+  background: var(--person);
+  transition: width 250ms var(--ease);
+}
+
+/* Exercise: ● ○ dots */
+.x-dots { display: flex; gap: 4px; flex-wrap: wrap; justify-content: flex-end; }
+.x-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  border: 1.5px solid var(--ink-30);
+}
+.x-dot.on { background: var(--person); border-color: var(--person); }
+
+/* Check tiles: 28px check circle */
+.check-circle {
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  border: 1.5px solid var(--ink-30);
+  color: transparent;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 4px;
+  transition: background-color 250ms var(--ease), color 250ms var(--ease);
+}
+.check-circle svg { width: 16px; height: 16px; }
+.check-circle.on { background-color: var(--person); border-color: var(--person); color: #fff; }
+
+/* Save indicator sits bottom-right on tiles, clear of the partner chip; static. */
+.tile .pending-dot { top: auto; bottom: 16px; right: 16px; animation: none; }
+
+/* Meals tile (v2 Phase B): signal dot + one caption */
+.meal-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.meal-dot-green { background: #30D158; }
+.meal-dot-amber { background: #FF9F0A; }
+.meal-dot-grey { background: var(--ink-30); }
+
+/* Add habit */
+.add-habit {
+  height: 52px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--surface);
+  display: flex; align-items: center; justify-content: center;
+  gap: 8px;
+  font-family: var(--font-text);
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--me-ink);
+  cursor: pointer;
+  transition: transform 100ms var(--ease);
+}
+.add-habit svg { width: 18px; height: 18px; }
+.add-habit:active { transform: scale(0.97); }
+
+/* ---------- Meal logging sheet ---------- */
+.meal-form { display: flex; flex-direction: column; gap: 12px; padding: 4px 0 8px; }
+.meal-label { font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink-60); margin-top: 4px; }
+.meal-label:first-child { margin-top: 0; }
+.meal-time {
+  align-self: flex-start;
+  height: 40px; padding: 0 16px;
+  border: 0; border-radius: var(--r-ctl);
+  background: var(--surface-2);
+  font-size: 17px; font-weight: 600; color: var(--ink);
+  cursor: pointer;
+}
+.meal-what {
+  height: 44px; padding: 0 12px;
+  border: 0; border-radius: var(--r-ctl);
+  background: var(--surface-2);
+  font-size: 17px; color: var(--ink);
+  font-family: var(--font-text);
+  user-select: text; -webkit-user-select: text;
+}
+.meal-what::placeholder { color: var(--ink-30); }
+.meal-chips, .meal-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+.meal-chip, .meal-tag {
+  height: 36px; padding: 0 12px;
+  border: 0; border-radius: var(--r-ctl);
+  background: var(--surface-2);
+  font-size: 15px; color: var(--ink);
+  cursor: pointer;
+}
+.meal-chip:active { transform: scale(0.97); }
+.meal-tag.on { background: var(--me-tint); color: var(--me-ink); font-weight: 600; }
+.meal-save { margin-top: 8px; }
+
+/* ---------- Reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .strip-ring, .strip-fill, .t-bar i, .check-circle, .sync-drop { transition: none; }
+  .tile, .add-habit { transition: none; }
+  .tile.pressing, .add-habit:active, .meal-chip:active { transform: none; }
+}
