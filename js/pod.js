@@ -1,16 +1,10 @@
-/* Sync screen (Phase 4).
+/* Together screen (was Sync, Phase 4).
    Days-in-sync hero, calendar month, per-habit streak cards.
    The Nudge and the "In sync today" moment live on Today, not here. */
 
 var Pod = (function () {
   var root = null;
   var DAYS = 31; // read window: must cover the whole current month (31st needs day 1)
-  var SYNC_PURPLE = "#BF5AF2";
-  var TINTS = { water: "#0A84FF", exercise: "#BF5AF2", steps: "#30D158" };
-
-  function tintFor(habit) {
-    return TINTS[habit.id] || "#A259FF";
-  }
 
   function evaluatedHabits() {
     return Store.get("habits").habits.filter(function (h) {
@@ -118,12 +112,11 @@ var Pod = (function () {
 
   function calCell(day, state, opts) {
     var cls = "cal-cell cal-" + state;
-    var style = opts.style || "";
     var label = opts.label || String(day);
+    var dot = opts.dot ? '<span class="cal-dot cal-dot-' + opts.dot + '" aria-hidden="true"></span>' : "";
     return '<div class="' + cls + (opts.today ? " cal-today" : "") + '"' +
-      (style ? ' style="' + style + '"' : "") +
       ' role="img" aria-label="' + esc(label) + '">' +
-      '<span class="cal-day num">' + day + "</span></div>";
+      '<span class="cal-day num">' + day + "</span>" + dot + "</div>";
   }
 
   function render() {
@@ -148,8 +141,6 @@ var Pod = (function () {
       var t = new Date();
       var syncedDays = monthSynced(me, partner);
       var elapsed = t.getDate();
-      var youC = Store.personColor(me);
-      var pC = Store.personColor(partner);
 
       var streakChip = streak > 0
         ? streak + "-day streak"
@@ -171,23 +162,16 @@ var Pod = (function () {
         }
         var sync = inSync(ds, me, partner);
         if (sync) {
-          cells += calCell(day, "both", {
-            today: isToday, label: aria + ", in sync",
-            style: "background:linear-gradient(135deg," + youC + " 0%," + SYNC_PURPLE + " 55%," + pC + " 100%);"
-          });
+          cells += calCell(day, "both", { today: isToday, label: aria + ", in sync" });
           continue;
         }
         var myFrac = Today.dayFraction(ds, me);
         var pFrac = Today.dayFraction(ds, partner);
         if (myFrac >= 1) {
-          cells += calCell(day, "me", {
-            today: isToday, label: aria + ", you only",
-            style: "background:linear-gradient(135deg," + youC + " 0%," + youC + " 50%,var(--cal-faint) 50%,var(--cal-faint) 100%);"
-          });
+          cells += calCell(day, "me", { today: isToday, label: aria + ", you only", dot: "me" });
         } else if (pFrac >= 1) {
           cells += calCell(day, "partner", {
-            today: isToday, label: aria + ", " + Store.personName(partner) + " only",
-            style: "background:linear-gradient(135deg,var(--cal-faint) 0%,var(--cal-faint) 50%," + pC + " 50%," + pC + " 100%);"
+            today: isToday, label: aria + ", " + Store.personName(partner) + " only", dot: "partner"
           });
         } else {
           cells += calCell(day, "none", { today: isToday, label: aria });
@@ -200,32 +184,30 @@ var Pod = (function () {
 
       // ----- streak cards -----
       var habits = Store.get("habits").habits;
-      var cards = habits.map(function (h) {
+      var rows = habits.map(function (h) {
         var a = personStreak(h, me);
         var b = personStreak(h, partner);
-        var tint = tintFor(h);
         var mx = Math.max(a.n, b.n, 1);
-        function row(pid, s) {
-          return '<div class="sc-person">' +
+        function row(pid, s, colorVar) {
+          return '<div class="sr-person">' +
             avatarHTML(pid, 22) +
-            '<span class="sc-bar" aria-hidden="true"><span style="width:' + Math.round(s.n / mx * 100) + '%"></span></span>' +
-            '<span class="sc-val num">' + s.n + s.unit + "</span>" +
+            '<span class="sr-bar" aria-hidden="true"><span style="width:' + Math.round(s.n / mx * 100) + "%;background:var(" + colorVar + ')"></span></span>' +
+            '<span class="sr-val num">' + s.n + s.unit + "</span>" +
             "</div>";
         }
-        return '<div class="streak-card glass" data-habit="' + esc(h.id) + '" style="--tint:' + tint + '">' +
-          '<p class="sc-name">' + esc(h.name) + "</p>" +
-          row(me, a) + row(partner, b) +
+        return '<div class="streak-row" data-habit="' + esc(h.id) + '">' +
+          '<p class="sr-name">' + esc(h.name) + "</p>" +
+          row(me, a, "--person") + row(partner, b, "--partner") +
           "</div>";
       }).join("");
 
       root.innerHTML =
-        '<div class="sync-head"><h1>Sync</h1>' +
+        '<div class="sync-head"><h1>Together</h1>' +
         '<p class="sync-sub">' + esc(monthName) + "</p></div>" +
         '<div class="sync-hero glass">' +
-        '<div class="sync-hero-glow" aria-hidden="true" style="background:linear-gradient(135deg,' + youC + "," + SYNC_PURPLE + " 40%," + pC + ')"></div>' +
         '<div class="sync-hero-main">' +
         '<div><p class="hero-label">Days in sync</p>' +
-        '<p class="hero-num num" style="background:linear-gradient(135deg,var(--ink) 30%,' + SYNC_PURPLE + " 70%," + pC + ' 100%);-webkit-background-clip:text;background-clip:text">' + syncedDays + "</p>" +
+        '<p class="hero-num num">' + syncedDays + "</p>" +
         '<p class="hero-sub">of ' + elapsed + " days this month</p></div>" +
         '<div class="sync-hero-chips">' +
         '<span class="hero-chip">' + esc(streakChip) + "</span>" +
@@ -234,20 +216,20 @@ var Pod = (function () {
         "</div>" +
         "</div>" +
         '<div class="cal-card glass" role="group" aria-label="' + esc(monthName) + ' calendar">' +
-        '<div class="cal-top"><span class="cal-title">Every day</span>' +
-        '<div class="cal-legend">' +
-        '<span class="leg"><i class="leg-dot" style="background:linear-gradient(135deg,' + youC + " 0%," + SYNC_PURPLE + " 55%," + pC + ' 100%)"></i>Both</span>' +
-        '<span class="leg"><i class="leg-dot" style="background:' + youC + '"></i>You</span>' +
-        '<span class="leg"><i class="leg-dot" style="background:' + pC + '"></i>' + esc(Store.personName(partner)) + "</span>" +
-        "</div></div>" +
+        '<div class="cal-top"><span class="cal-title">Every day</span></div>' +
         '<div class="cal-grid">' +
         ["M", "T", "W", "T", "F", "S", "S"].map(function (l) { return '<span class="dow" aria-hidden="true">' + l + "</span>"; }).join("") +
         cells + "</div>" +
+        '<div class="cal-legend">' +
+        '<span class="leg"><i class="leg-dot leg-both" aria-hidden="true"></i>Both</span>' +
+        '<span class="leg"><i class="leg-dot leg-me" aria-hidden="true"></i>You</span>' +
+        '<span class="leg"><i class="leg-dot leg-partner" aria-hidden="true"></i>' + esc(Store.personName(partner)) + "</span>" +
+        "</div>" +
         "</div>" +
         '<div class="streaks-sec"><h2>Streaks</h2>' +
-        '<div class="streak-cards">' + cards + "</div></div>";
+        '<div class="streak-list glass">' + rows + "</div></div>";
     }).catch(function () {
-      root.innerHTML = '<div class="load-error"><p>Couldn\'t load the Sync view. Check your connection.</p>' +
+      root.innerHTML = '<div class="load-error"><p>Couldn\'t load the Together view. Check your connection.</p>' +
         '<button class="btn" id="pod-retry">Retry</button></div>';
       document.getElementById("pod-retry").addEventListener("click", render);
     });
