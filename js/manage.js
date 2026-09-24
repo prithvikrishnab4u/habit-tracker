@@ -5,11 +5,6 @@
 var Manage = (function () {
   var root = null;
   var UNITS = ["glasses", "steps", "workouts", "minutes", "times"];
-  var TINTS = { water: "#0A84FF", exercise: "#BF5AF2", steps: "#30D158" };
-
-  function tintFor(h) {
-    return TINTS[h.id] || "#A259FF";
-  }
 
   // "8 glasses a day", "1 time a week".
   function detailFor(h) {
@@ -27,9 +22,9 @@ var Manage = (function () {
   }
 
   function habitRow(h) {
-    var tint = tintFor(h);
-    return '<button class="habit-row" data-habit="' + h.id + '" style="--tint:' + tint + '">' +
-      '<span class="habit-icon" style="background:linear-gradient(135deg,' + tint + " 0%,color-mix(in srgb," + tint + ' 62%,#000) 100%)" aria-hidden="true"></span>' +
+    var letter = (h.name || "?").trim().charAt(0).toUpperCase();
+    return '<button class="habit-row" data-habit="' + h.id + '">' +
+      '<span class="habit-icon" aria-hidden="true">' + esc(letter) + "</span>" +
       '<span class="habit-text"><span class="habit-name">' + esc(h.name) + "</span>" +
       '<span class="habit-detail">' + esc(detailFor(h)) + "</span></span>" +
       '<span class="habit-chev" aria-hidden="true">\u203A</span></button>';
@@ -60,7 +55,7 @@ var Manage = (function () {
       '<div class="sheet-headrow"><span class="sheet-title">New habit</span>' +
       '<button class="sheet-x" id="ah-x" aria-label="Close"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></div>' +
       '<p class="sheet-sub">It appears on both phones as soon as it saves.</p>' +
-      '<div class="token-card" style="padding:0;margin-bottom:20px;background:none;border:0;box-shadow:none;">' +
+      '<div class="token-card token-card--plain">' +
       '<label for="ah-name">Name</label>' +
       '<input id="ah-name" placeholder="Read" autocomplete="off" maxlength="40">' +
       '<label>Type</label>' +
@@ -74,15 +69,15 @@ var Manage = (function () {
       '<button data-p="week" aria-pressed="false">Weekly</button>' +
       "</div>" +
       '<label>Unit</label>' +
-      '<div class="chips" style="justify-content:flex-start" id="ah-units">' + unitChips + "</div>" +
+      '<div class="chips" id="ah-units">' + unitChips + "</div>" +
       '<label>Your target</label>' +
-      '<div class="stepper" style="margin-bottom:12px">' +
+      '<div class="stepper stepper--target">' +
       '<button id="ah-dec" aria-label="Lower target">\u2212</button>' +
       '<span class="step-val num" id="ah-val">1</span>' +
       '<button id="ah-inc" aria-label="Raise target">+</button>' +
       "</div>" +
       '<label>' + esc(Store.personName(partner)) + "'s target</label>" +
-      '<div class="stepper" style="margin-bottom:20px">' +
+      '<div class="stepper stepper--partner">' +
       '<button id="ah-pdec" aria-label="Lower partner target">\u2212</button>' +
       '<span class="step-val num" id="ah-pval">1</span>' +
       '<button id="ah-pinc" aria-label="Raise partner target">+</button>' +
@@ -93,13 +88,20 @@ var Manage = (function () {
 
     document.body.appendChild(scrim);
     document.body.appendChild(sheet);
+    blockScrimScroll(scrim);
+    lockScroll();
     requestAnimationFrame(function () {
       requestAnimationFrame(function () {
         scrim.classList.add("show");
         sheet.classList.add("show");
       });
     });
+    var closed = false;
     function close() {
+      // Scrim, X, Save and Archive can all race to close; unlock exactly once.
+      if (closed) return;
+      closed = true;
+      unlockScroll();
       scrim.classList.remove("show");
       sheet.classList.remove("show");
       setTimeout(function () { scrim.remove(); sheet.remove(); }, 240);
@@ -215,7 +217,7 @@ var Manage = (function () {
       '<div class="sheet-headrow"><span class="sheet-title">Edit habit</span>' +
       '<button class="sheet-x" id="ah-x" aria-label="Close"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></div>' +
       '<p class="sheet-sub">Changes appear on both phones as soon as they save.</p>' +
-      '<div class="token-card" style="padding:0;margin-bottom:20px;background:none;border:0;box-shadow:none;">' +
+      '<div class="token-card token-card--plain">' +
       '<label for="ah-name">Name</label>' +
       '<input id="ah-name" value="' + esc(name) + '" autocomplete="off" maxlength="40">' +
       '<label>Type</label>' +
@@ -229,34 +231,41 @@ var Manage = (function () {
       '<button data-p="week" aria-pressed="' + (period === "week") + '">Weekly</button>' +
       "</div>" +
       '<label>Unit</label>' +
-      '<div class="chips" style="justify-content:flex-start" id="ah-units">' + unitChips + "</div>" +
-      '<input id="ah-custom-unit" placeholder="e.g. pages" value="' + esc(customUnit) + '" style="display:' + (customUnit ? "block" : "none") + ';margin-top:8px;" maxlength="20">' +
+      '<div class="chips" id="ah-units">' + unitChips + "</div>" +
+      '<input id="ah-custom-unit" class="custom-unit-input' + (customUnit ? "" : " hidden") + '" placeholder="e.g. pages" value="' + esc(customUnit) + '" maxlength="20">' +
       '<label>Your target</label>' +
-      '<div class="stepper" style="margin-bottom:12px">' +
+      '<div class="stepper stepper--target">' +
       '<button id="ah-dec" aria-label="Lower target">\u2212</button>' +
       '<span class="step-val num" id="ah-val">' + target + "</span>" +
       '<button id="ah-inc" aria-label="Raise target">+</button>' +
       "</div>" +
       '<label>' + esc(Store.personName(partner)) + "'s target</label>" +
-      '<div class="stepper" style="margin-bottom:20px">' +
+      '<div class="stepper stepper--partner">' +
       '<button id="ah-pdec" aria-label="Lower partner target">\u2212</button>' +
       '<span class="step-val num" id="ah-pval">' + partnerTarget + "</span>" +
       '<button id="ah-pinc" aria-label="Raise partner target">+</button>' +
       "</div>" +
       "</div>" +
       '<div class="sheet-row"><button class="btn" id="ah-save">Save</button>' +
-      '<button class="btn btn-ghost" id="ah-archive" style="color:var(--error,#FF453A)">Archive</button></div>' +
+      '<button class="btn btn-ghost habit-archive-btn" id="ah-archive">Archive</button></div>' +
       '<p class="onb-error" id="ah-error"></p>';
 
     document.body.appendChild(scrim);
     document.body.appendChild(sheet);
+    blockScrimScroll(scrim);
+    lockScroll();
     requestAnimationFrame(function () {
       requestAnimationFrame(function () {
         scrim.classList.add("show");
         sheet.classList.add("show");
       });
     });
+    var closed = false;
     function close() {
+      // Scrim, X, Save and Archive can all race to close; unlock exactly once.
+      if (closed) return;
+      closed = true;
+      unlockScroll();
       scrim.classList.remove("show");
       sheet.classList.remove("show");
       setTimeout(function () { scrim.remove(); sheet.remove(); }, 240);
@@ -282,10 +291,10 @@ var Manage = (function () {
         c.setAttribute("aria-pressed", "true");
         var v = c.getAttribute("data-unit");
         if (v === "__custom") {
-          customInput.style.display = "block";
+          customInput.classList.remove("hidden");
           customInput.focus();
         } else {
-          customInput.style.display = "none";
+          customInput.classList.add("hidden");
           unit = v;
         }
       });
@@ -312,7 +321,7 @@ var Manage = (function () {
       var err = sheet.querySelector("#ah-error");
       if (!name) { err.textContent = "Give the habit a name."; return; }
       var customVal = customInput.value.trim();
-      if (customInput.style.display !== "none" && customVal) unit = customVal;
+      if (!customInput.classList.contains("hidden") && customVal) unit = customVal;
       var targets = {};
       targets[me] = target;
       if (partner) targets[partner] = partnerTarget;
@@ -391,7 +400,9 @@ var Manage = (function () {
     if (window.Today && typeof Today.paintInkVars === "function") Today.paintInkVars();
     var habits = Store.get("habits").habits;
     root.innerHTML =
-      '<div class="sync-head"><h1>Habits</h1>' +
+      '<button class="settings-back" id="settings-back" aria-label="Back">' +
+      '<span aria-hidden="true">‹</span> Back</button>' +
+      '<div class="sync-head"><h1>Habits &amp; settings</h1>' +
       '<p class="sync-sub">' + habits.length + " habits, shared</p></div>" +
       '<div class="habit-card glass">' +
       habits.map(habitRow).join("") +
@@ -407,6 +418,9 @@ var Manage = (function () {
 
     document.getElementById("add-habit").addEventListener("click", addSheet);
     document.getElementById("signout-btn").addEventListener("click", signOut);
+    document.getElementById("settings-back").addEventListener("click", function () {
+      if (window.App) App.closeSettings();
+    });
     root.querySelectorAll(".habit-row[data-habit]").forEach(function (row) {
       row.addEventListener("click", function () {
         var hid = row.getAttribute("data-habit");
