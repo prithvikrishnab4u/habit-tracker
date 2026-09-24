@@ -185,13 +185,20 @@ var Backlog = (function () {
       (sub ? '<p class="sheet-sub">' + esc(sub) + "</p>" : "") + bodyHTML;
     document.body.appendChild(scrim);
     document.body.appendChild(sheet);
+    blockScrimScroll(scrim);
+    lockScroll();
     requestAnimationFrame(function () {
       requestAnimationFrame(function () {
         scrim.classList.add("show");
         sheet.classList.add("show");
       });
     });
+    var closed = false;
     function close() {
+      // Scrim, X and Save can all race to close; unlock exactly once.
+      if (closed) return;
+      closed = true;
+      unlockScroll();
       scrim.classList.remove("show");
       sheet.classList.remove("show");
       setTimeout(function () { scrim.remove(); sheet.remove(); }, 240);
@@ -264,10 +271,95 @@ var Backlog = (function () {
     });
   }
 
+  /* ----- "Got a gap?" picker (own card, moved from Today) ----- */
+
+  var gapState = { gap: 0, tag: "All", picked: null };
+
+  function gapCardHTML() {
+    var sizes = SIZES.map(function (s) {
+      return '<button class="gap-size" data-gap="' + s + '">' + sizeLabel(s) + "</button>";
+    }).join("");
+    var tags = FILTER_TAGS.map(function (t) {
+      return '<button class="gap-tag' + (t === "All" ? " on" : "") + '" data-tag="' + t + '">' + t + "</button>";
+    }).join("");
+    return '<section class="gap-card glass" aria-label="Got a gap?">' +
+      '<div class="gap-head"><span class="gap-title">Got a gap?</span></div>' +
+      '<div class="gap-sizes">' + sizes + "</div>" +
+      '<div class="gap-tags">' + tags + "</div>" +
+      '<div class="gap-results" id="gap-results"><p class="gap-hint">Pick a size to see what fits.</p></div>' +
+      "</section>";
+  }
+
+  function gapResultsHTML(list) {
+    if (!count()) {
+      return '<p class="gap-hint">Nothing queued yet. Add a few things below.</p>';
+    }
+    if (!list.length) {
+      return '<p class="gap-hint">Nothing fits. Try a bigger gap or another tag.</p>';
+    }
+    var rows = list.map(function (it) {
+      return '<button class="gap-pick' + (gapState.picked === it.id ? " sel" : "") + '" data-id="' + esc(it.id) + '">' +
+        '<span class="gap-pickwhat">' + esc(it.what) + "</span>" +
+        '<span class="bl-sizechip">' + sizeLabel(it.size) + "</span></button>";
+    }).join("");
+    return rows + '<button class="gap-shuffle" id="gap-shuffle">Shuffle</button>';
+  }
+
+  function paintGapResults(list) {
+    var box = document.getElementById("gap-results");
+    if (!box) return;
+    box.innerHTML = gapResultsHTML(list || []);
+    box.querySelectorAll(".gap-pick").forEach(function (b) {
+      b.addEventListener("click", function () {
+        gapState.picked = b.dataset.id;
+        box.querySelectorAll(".gap-pick").forEach(function (x) {
+          x.classList.toggle("sel", x.dataset.id === gapState.picked);
+        });
+      });
+    });
+    var sh = document.getElementById("gap-shuffle");
+    if (sh) sh.addEventListener("click", function () {
+      gapState.picked = null;
+      paintGapResults(shuffleThree(gapState.gap, gapState.tag));
+    });
+  }
+
+  function showGapPicks() {
+    if (!gapState.gap) return;
+    gapState.picked = null;
+    load().then(function () {
+      paintGapResults(pickThree(gapState.gap, gapState.tag));
+    }, function () {
+      var box = document.getElementById("gap-results");
+      if (box) box.innerHTML = '<p class="gap-hint">Couldn\'t load the backlog. Check your connection.</p>';
+    });
+  }
+
+  function bindGapCard() {
+    var card = document.querySelector(".gap-card");
+    if (!card) return;
+    card.querySelectorAll(".gap-size").forEach(function (b) {
+      b.addEventListener("click", function () {
+        card.querySelectorAll(".gap-size").forEach(function (x) { x.classList.remove("on"); });
+        b.classList.add("on");
+        gapState.gap = Number(b.dataset.gap);
+        showGapPicks();
+      });
+    });
+    card.querySelectorAll(".gap-tag").forEach(function (b) {
+      b.addEventListener("click", function () {
+        card.querySelectorAll(".gap-tag").forEach(function (x) { x.classList.remove("on"); });
+        b.classList.add("on");
+        gapState.tag = b.dataset.tag;
+        showGapPicks();
+      });
+    });
+  }
+
   /* ----- screen ----- */
 
   function rowHTML(it) {
-    return '<div class="bl-row glass" data-id="' + esc(it.id) + '">' +
+    return '<div class="bl-row" data-id="' + esc(it.id) + '">' +
       '<div class="bl-main"><span class="bl-what">' + esc(it.what) + "</span>" +
       '<span class="bl-meta"><span class="bl-sizechip">' + sizeLabel(it.size) + "</span>" +
       '<button class="bl-tag' + (it.tag ? "" : " none") + '" data-id="' + esc(it.id) + '">' +
@@ -284,8 +376,10 @@ var Backlog = (function () {
     root.innerHTML = '<div class="bl-loading">Loading backlog...</div>';
     load().then(function (list) {
       if (token !== render._t) return;
-      var head = '<div class="bl-head"><h2>Backlog</h2>' +
-        '<span class="bl-count">' + list.length + " / " + CAP + "</span>" +
+      var sub = list.length + (list.length === 1 ? " idea saved" : " ideas saved");
+      var head = '<div class="bl-head">' +
+        '<div><h1 class="screen-title">Free time</h1>' +
+        '<p class="screen-sub">' + sub + "</p></div>" +
         '<button class="bl-addbtn" id="bl-add" aria-label="Add to backlog">' +
         '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></div>';
       var body;
@@ -293,11 +387,13 @@ var Backlog = (function () {
         body = '<div class="bl-empty glass"><p>Nothing queued.</p>' +
           '<p class="bl-emptysub">When time appears, pick from here instead of deciding on the spot.</p></div>';
       } else {
-        body = '<div class="bl-list">' + list.map(rowHTML).join("") + "</div>";
+        body = '<div class="bl-list glass">' + list.map(rowHTML).join("") + "</div>";
       }
-      root.innerHTML = head + body;
+      root.innerHTML = head + gapCardHTML() + body;
 
       document.getElementById("bl-add").addEventListener("click", openAddSheet);
+      bindGapCard();
+      showGapPicks();
       root.querySelectorAll(".bl-tag").forEach(function (b) {
         b.addEventListener("click", function (e) {
           e.stopPropagation();
@@ -319,7 +415,7 @@ var Backlog = (function () {
     });
   }
 
-  /* ----- "Got a gap?" picker (Today card) ----- */
+  /* ----- match helpers used by the gap picker above ----- */
 
   // Matches: item fits inside the gap, optional tag filter, oldest first.
   function matches(gapMin, tagFilter) {
