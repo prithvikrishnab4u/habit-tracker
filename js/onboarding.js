@@ -115,7 +115,6 @@ var Onboarding = (function () {
       "<span></span><span></span><span></span><span></span>" +
       "</div>" +
       '<div class="onb-share"><div class="pingwrap">' +
-      '<span class="ping"></span>' +
       '<span class="core"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><path d="M7.5 7.5L12 3l4.5 4.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></span>' +
       "</div></div>" +
       '<svg class="onb-arrow" viewBox="0 0 24 24" width="26" height="26" aria-hidden="true"><path d="M12 19V5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><path d="M6 11l6-6 6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
@@ -145,14 +144,16 @@ var Onboarding = (function () {
 
   function showWho() {
     stopInstallWatch();
+    var prithviColor = Colors.get(Colors.DEFAULTS.prithvi).base;
+    var sowmyaColor = Colors.get(Colors.DEFAULTS.sowmya).base;
     root.innerHTML =
       '<div class="onb">' + bgHTML() +
       '<div class="onb-screen onb-who">' + chrome(2, function () { viaInstall ? showInstall() : showWelcome(); }) +
       '<h1>Who\'s holding <span class="serif">this phone?</span></h1>' +
       '<div class="person-pick" role="group" aria-label="Choose person">' +
-      '<button class="person-btn" data-person="prithvi" aria-label="Prithvi">' +
+      '<button class="person-btn" data-person="prithvi" aria-label="Prithvi" style="background:' + prithviColor + '">' +
       '<span class="giant" aria-hidden="true">' + esc(initial("prithvi")) + '</span><span class="pname">' + esc(displayName("prithvi")) + "</span></button>" +
-      '<button class="person-btn" data-person="sowmya" aria-label="Sowmya">' +
+      '<button class="person-btn" data-person="sowmya" aria-label="Sowmya" style="background:' + sowmyaColor + '">' +
       '<span class="giant" aria-hidden="true">' + esc(initial("sowmya")) + '</span><span class="pname">' + esc(displayName("sowmya")) + "</span></button>" +
       "</div>" +
       '<p class="hint">Tap yourself. This phone remembers you after this.</p>' +
@@ -360,10 +361,6 @@ var Onboarding = (function () {
         podData = res.data;
         token = t;
         document.getElementById("ob-hs").classList.add("together");
-        var hs = document.getElementById("ob-hs");
-        if (hs && !hs.querySelector(".hs-spark")) {
-          hs.insertAdjacentHTML("beforeend", '<span class="hs-spark" aria-hidden="true"></span>');
-        }
         var keyOk = document.getElementById("ob-keyok");
         if (keyOk) keyOk.classList.remove("hidden");
         status.textContent = "Connected. Your habits are live.";
@@ -461,15 +458,6 @@ var Onboarding = (function () {
   /* ---------- step 4: first pour ---------- */
 
   function showPour() {
-    var c = Colors.get(colorId);
-    var waveB = "M0 13 Q 16 2 32.5 13 T 65 13 T 97.5 13 T 130 13 T 162.5 13 T 195 13 T 227.5 13 T 260 13 T 292.5 13 T 325 13 T 357.5 13 T 390 13 T 422.5 13 T 455 13 T 487.5 13 T 520 13 T 552.5 13 T 585 13 T 617.5 13 T 650 13 T 682.5 13 T 715 13 T 747.5 13 T 780 13 V 32 H 0 Z";
-    var waveF = "M0 13 Q 24 0 48.75 13 T 97.5 13 T 146.25 13 T 195 13 T 243.75 13 T 292.5 13 T 341.25 13 T 390 13 T 438.75 13 T 487.5 13 T 536.25 13 T 585 13 T 633.75 13 T 682.5 13 T 731.25 13 T 780 13 V 26 H 0 Z";
-    var bubbles = "";
-    var bpos = [[12, 9, 0.2, 4.2], [28, 6, 1.4, 3.6], [45, 11, 0.8, 4.8], [62, 7, 2.1, 3.9], [78, 10, 0.5, 4.5], [90, 6, 1.8, 4.1]];
-    bpos.forEach(function (b) {
-      bubbles += '<i class="bubble" style="left:' + b[0] + "%;width:" + b[1] + "px;height:" + b[1] + "px;animation-delay:" + b[2] + "s;animation-duration:" + b[3] + 's"></i>';
-    });
-
     root.innerHTML =
       '<div class="onb">' + bgHTML() +
       '<div class="onb-screen onb-pour">' +
@@ -484,14 +472,6 @@ var Onboarding = (function () {
       "</span>" +
       "</button>" +
       '<p class="hint">Tap the glass. It\'s your first check-in.</p>' +
-      '<div class="pour-flood" id="ob-pourflood" aria-hidden="true">' +
-      '<div class="pf-waves">' +
-      '<svg class="pf-back" viewBox="0 0 780 26" preserveAspectRatio="none" aria-hidden="true"><path d="' + waveB + '" fill="' + c.base + '" fill-opacity="0.75"/></svg>' +
-      '<svg class="pf-front" viewBox="0 0 780 26" preserveAspectRatio="none" aria-hidden="true"><path d="' + waveF + '" fill="' + c.top + '"/></svg>' +
-      "</div>" +
-      '<div class="pf-body" style="background:linear-gradient(180deg,' + c.top + " 0%," + c.base + " 35%," + c.bottom + " 70%," + c.bottom + ' 100%)"></div>' +
-      '<div class="pf-bubbles">' + bubbles + "</div>" +
-      "</div>" +
       "</div></div>";
 
     var poured = false;
@@ -501,9 +481,6 @@ var Onboarding = (function () {
       var btn = document.getElementById("ob-pour");
       btn.classList.add("poured");
       btn.disabled = true;
-      setTimeout(function () {
-        document.getElementById("ob-pourflood").classList.add("go");
-      }, 500);
 
       var dateStr = localDate();
       var write = new Promise(function (resolve) {
@@ -516,7 +493,7 @@ var Onboarding = (function () {
           });
         }).catch(function () { resolve({ failed: true }); });
       });
-      var anim = new Promise(function (resolve) { setTimeout(resolve, 2100); });
+      var anim = new Promise(function (resolve) { setTimeout(resolve, 900); });
       Promise.all([write, anim]).then(function (results) {
         var r = results[0];
         if (r.failed) {
@@ -524,7 +501,6 @@ var Onboarding = (function () {
           poured = false;
           btn.classList.remove("poured");
           btn.disabled = false;
-          document.getElementById("ob-pourflood").classList.remove("go");
           return;
         }
         showDone(r.count);
@@ -547,9 +523,6 @@ var Onboarding = (function () {
     var meColor = Colors.get(colorId).base;
     var poColor = Colors.get(Store.getColorId(partner)).base;
 
-    // Keep the pour flood up behind the finale.
-    var flood = document.getElementById("ob-pourflood");
-
     root.innerHTML =
       '<div class="onb">' + bgHTML() +
       '<div class="onb-screen onb-done">' +
@@ -565,11 +538,6 @@ var Onboarding = (function () {
       '<button class="btn" id="ob-enter"><span class="disp">Open Today</span>' +
       '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></button>' +
       "</div></div>";
-
-    if (flood) {
-      flood.classList.add("go");
-      root.querySelector(".onb").appendChild(flood);
-    }
 
     document.getElementById("ob-enter").addEventListener("click", function () {
       Store.applyColor();
