@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <title>Habit Tracker</title>
 <meta name="description" content="One glance for both of you. A private habit tracker for two people.">
 <meta name="theme-color" content="#05060A" media="(prefers-color-scheme: dark)">
@@ -14,9 +14,14 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
-<link rel="stylesheet" href="css/app.css?v=ae92631f">
+<link rel="stylesheet" href="css/base.css?v=18cf1546">
+<link rel="stylesheet" href="css/today.css?v=18cf1546">
+<link rel="stylesheet" href="css/together.css?v=18cf1546">
+<link rel="stylesheet" href="css/backlog.css?v=18cf1546">
+<link rel="stylesheet" href="css/habits.css?v=18cf1546">
+<link rel="stylesheet" href="css/onboarding.css?v=18cf1546">
 </head>
-<body data-build="ae92631f">
+<body data-build="18cf1546">
 <div id="wallpaper" aria-hidden="true">
   <div class="orb orb-you"></div>
   <div class="orb orb-partner"></div>
@@ -35,13 +40,13 @@
   <section id="screen-today" class="screen hidden" aria-label="Today">
     <div id="today-root"></div>
   </section>
-  <section id="screen-pod" class="screen hidden" aria-label="Sync">
+  <section id="screen-pod" class="screen hidden" aria-label="Together">
     <div id="pod-root"></div>
   </section>
-  <section id="screen-backlog" class="screen hidden" aria-label="Backlog">
+  <section id="screen-backlog" class="screen hidden" aria-label="Free time">
     <div id="backlog-root"></div>
   </section>
-  <section id="screen-habits" class="screen hidden" aria-label="Habits">
+  <section id="screen-habits" class="screen hidden" aria-label="Habits and settings">
     <div id="manage-root"></div>
   </section>
 
@@ -50,34 +55,30 @@
       <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.8 2.8L16.5 9.5"/></svg>
       <span>Today</span>
     </button>
-    <button class="tab" data-tab="pod" aria-label="Sync">
+    <button class="tab" data-tab="pod" aria-label="Together">
       <svg viewBox="0 0 26 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="12" r="7"/><circle cx="17" cy="12" r="7"/></svg>
-      <span>Sync</span>
+      <span>Together</span>
     </button>
-    <button class="tab" data-tab="backlog" aria-label="Backlog">
-      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
-      <span>Backlog</span>
-    </button>
-    <button class="tab" data-tab="habits" aria-label="Habits">
-      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>
-      <span>Habits</span>
+    <button class="tab" data-tab="backlog" aria-label="Free time">
+      <svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+      <span>Free time</span>
     </button>
   </nav>
 </main>
 
 <div id="toast" class="glass hidden" role="status"></div>
 
-<script src="js/util.js?v=ae92631f"></script>
-<script src="js/api.js?v=ae92631f"></script>
-<script src="js/colors.js?v=ae92631f"></script>
-<script src="js/demo.js?v=ae92631f"></script>
-<script src="js/store.js?v=ae92631f"></script>
-<script src="js/data.js?v=ae92631f"></script>
-<script src="js/backlog.js?v=ae92631f"></script>
-<script src="js/today.js?v=ae92631f"></script>
-<script src="js/pod.js?v=ae92631f"></script>
-<script src="js/manage.js?v=ae92631f"></script>
-<script src="js/onboarding.js?v=ae92631f"></script>
-<script src="js/app.js?v=ae92631f"></script>
+<script src="js/util.js?v=18cf1546"></script>
+<script src="js/api.js?v=18cf1546"></script>
+<script src="js/colors.js?v=18cf1546"></script>
+<script src="js/demo.js?v=18cf1546"></script>
+<script src="js/store.js?v=18cf1546"></script>
+<script src="js/data.js?v=18cf1546"></script>
+<script src="js/backlog.js?v=18cf1546"></script>
+<script src="js/today.js?v=18cf1546"></script>
+<script src="js/pod.js?v=18cf1546"></script>
+<script src="js/manage.js?v=18cf1546"></script>
+<script src="js/onboarding.js?v=18cf1546"></script>
+<script src="js/app.js?v=18cf1546"></script>
 </body>
 </html>
