@@ -1,15 +1,11 @@
-/* Today screen (Phase 2 rebuild).
-   Together card + tile grid. Presentation only: the save pipeline
+/* Today screen (Calm glass).
+   Sync strip + tile grid. Presentation only: the save pipeline
    (Data.saveEntry with undo/retry), the sheets, and the Web Share nudge
    keep their existing behavior. Vanilla JS, no build step. */
 
 var Today = (function () {
   var dateOffset = 0; // 0 = today, down to -2 for late logging
   var MAX_BACK = 2;
-  var firstRender = true;
-
-  var TINTS = { water: "#0A84FF", exercise: "#BF5AF2", steps: "#30D158" };
-  var EXTRA_TINTS = ["#5AC8FA", "#5E5CE6", "#FF375F"]; /* teal, indigo, pink, in order */
 
   /* ----- date helpers ----- */
   function viewedDate() { return addDays(localDate(), dateOffset); }
@@ -43,12 +39,6 @@ var Today = (function () {
 
   function habitById(id) {
     return Store.get("habits").habits.filter(function (h) { return h.id === id; })[0];
-  }
-
-  function greeting() {
-    var h = new Date().getHours();
-    var word = h < 12 ? "morning" : h < 17 ? "afternoon" : "evening";
-    return "Good " + word + ", " + Store.personName(Store.get("person"));
   }
 
   /* ----- sync helpers (shared with the Pod screen) ----- */
@@ -98,10 +88,6 @@ var Today = (function () {
       ' transform="rotate(-90 ' + size / 2 + " " + size / 2 + ')"/></svg>';
   }
 
-  /* ----- entrance (first paint only) ----- */
-  function enterCls(i) { return firstRender ? " press-in" : ""; }
-  function enterDelay(i) { return firstRender ? ' style="--enter-d:' + (i * 60) + 'ms"' : ""; }
-
   /* ----- small builders ----- */
   function avatarHTML(personId, px) {
     var name = Store.personName(personId) || "?";
@@ -110,16 +96,19 @@ var Today = (function () {
       esc(name.charAt(0).toUpperCase()) + "</span>";
   }
 
-  // Seamless looping wave: 240-unit path shown at 200% width,
-  // translated -50% per loop.
-  function waveSVG(fill, extra) {
-    return '<svg class="wave ' + (extra || "") + '" viewBox="0 0 240 10" preserveAspectRatio="none" aria-hidden="true">' +
-      '<path d="M0 5 Q15 1 30 5 T60 5 T90 5 T120 5 T150 5 T180 5 T210 5 T240 5 V10 H0 Z" fill="' + fill + '"/></svg>';
+  // Partner chip in the tile corner: 18px avatar + their value.
+  function chipHTML(personId, valueText) {
+    return '<span class="t-chip">' + avatarHTML(personId, 18) +
+      '<span class="t-chip-val num">' + esc(valueText) + "</span></span>";
   }
 
-  function chipHTML(personId, valueText, small) {
-    return '<span class="t-chip' + (small ? " t-chip-sm" : "") + '">' + avatarHTML(personId, small ? 18 : 22) +
-      '<span class="t-chip-val num">' + esc(valueText) + "</span></span>";
+  // 4px flat progress bar at the bottom of every tile, in --person.
+  function barHTML(frac) {
+    return '<span class="t-bar" aria-hidden="true"><i class="js-bar" style="width:' + Math.round(Math.min(frac, 1) * 100) + '%"></i></span>';
+  }
+  function paintBar(tileEl, frac) {
+    var b = tileEl.querySelector(".js-bar");
+    if (b) b.style.width = Math.round(Math.min(frac, 1) * 100) + "%";
   }
 
   function fmtSteps(n) {
@@ -134,10 +123,6 @@ var Today = (function () {
   function fmtStepsFull(n) {
     if (n === undefined || n === null) return "--";
     return Number(n).toLocaleString("en-US");
-  }
-
-  function glowFor(personId) {
-    return Colors.get(Store.getColorId(personId)).base + "8C"; // 55% alpha
   }
 
   // Accessible ink + tint for the viewer's person color, per theme.
@@ -160,9 +145,9 @@ var Today = (function () {
   }
 
   var ICONS = {
-    water: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3c3 4.2 6 7.6 6 11a6 6 0 1 1-12 0c0-3.4 3-6.8 6-11z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>',
-    exercise: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13 2 4.5 13.5H11L9.5 22 19 10h-6.5L13 2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>',
-    steps: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l2.5 7 4-15 2.5 8H21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    gear: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/>' +
+      '<circle cx="12" cy="12" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/>' +
+      '<path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
     check: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2" opacity="0.35"/><path d="M8 12.5l2.6 2.6L16 9.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     plus: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>',
     badge: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 12.5l3.2 3.2L17 9" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>'
@@ -207,13 +192,20 @@ var Today = (function () {
       (sub ? '<p class="sheet-sub">' + esc(sub) + "</p>" : "") + bodyHTML;
     document.body.appendChild(scrim);
     document.body.appendChild(sheet);
+    blockScrimScroll(scrim);
+    lockScroll();
     requestAnimationFrame(function () {
       requestAnimationFrame(function () {
         scrim.classList.add("show");
         sheet.classList.add("show");
       });
     });
+    var closed = false;
     function close() {
+      // Scrim, X and Done can all race to close; unlock exactly once.
+      if (closed) return;
+      closed = true;
+      unlockScroll();
       scrim.classList.remove("show");
       sheet.classList.remove("show");
       setTimeout(function () {
@@ -272,28 +264,16 @@ var Today = (function () {
       tileEl);
   }
 
-  // After a successful write: repaint the Together card for the viewed date
+  // After a successful write: repaint the sync strip for the viewed date
   // and check the sync moment.
   function afterWrite(dateStr, personId) {
     var partner = Store.partnerId();
     var vd = viewedDate();
-    paintTogether(vd, personId, partner);
     paintStrip(vd, personId, partner);
     maybeSyncMoment(vd, personId, partner);
   }
 
-  /* ----- Together card ----- */
-  function sphereHTML(personId, frac, waveCls, label, who) {
-    var pct = Math.round(frac * 100);
-    return '<div class="sphere-wrap" data-who="' + who + '">' +
-      '<div class="sphere" style="' + Colors.liquidVars(Store.getColorId(personId)) + "--glow:" + glowFor(personId) + '">' +
-      '<span class="sphere-liquid' + (pct === 0 ? " empty" : "") + '" style="height:' + pct + '%">' + waveSVG("var(--liq-top)", waveCls) + "</span>" +
-      '<span class="sphere-gloss"></span>' +
-      '<span class="sphere-pct num' + (frac > 0.5 ? " on-liquid" : "") + '">' + pct + "%</span>" +
-      "</div>" +
-      '<span class="sphere-name">' + esc(label) + "</span></div>";
-  }
-
+  /* ----- sync strip: the single "both of us" element ----- */
   // Status copy, word for word from the brief. Names are raw here; the HTML
   // builder escapes, the painter uses textContent.
   function statusFor(dateStr, me, partner) {
@@ -307,111 +287,52 @@ var Today = (function () {
     return { top: "Meet in the middle", line: "Meet in the middle.", showNudge: true };
   }
 
-  function togetherHTML(dateStr, me, partner) {
-    var myFrac = dayFraction(dateStr, me);
-    var pFrac = partner ? dayFraction(dateStr, partner) : 0;
-    var synced = partner ? Pod.inSync(dateStr, me, partner) : false;
-    var st = statusFor(dateStr, me, partner);
-    var youColor = Store.personColor(me);
-    var pColor = partner ? Store.personColor(partner) : "transparent";
-    var tubeYouBg = synced ? "linear-gradient(90deg," + youColor + ",#BF5AF2)" : youColor;
-    var tubePaBg = synced ? "linear-gradient(90deg,#BF5AF2," + pColor + ")" : pColor;
-    return '<section class="together-card glass' + (synced ? " synced" : "") + '" id="tg-card"' +
-      enterCls(2) + enterDelay(2) + ' aria-label="Together">' +
-      '<div class="tg-head"><span class="tg-label">TOGETHER</span>' +
-      '<span class="tg-status' + (synced ? " is-sync" : "") + '">' + esc(st.top) + "</span></div>" +
-      '<div class="tg-mid">' +
-      sphereHTML(me, myFrac, "w6", "You", "me") +
-      '<div class="tube" role="img" aria-label="Progress toward the middle">' +
-      '<span class="tube-fill tube-you" style="width:' + (myFrac * 50) + "%;background:" + tubeYouBg + '"></span>' +
-      '<span class="tube-fill tube-partner" style="width:' + (pFrac * 50) + "%;background:" + tubePaBg + '"></span>' +
-      '<span class="tube-sync" style="--you:' + youColor + ";--partner:" + pColor + '"></span>' +
-      "</div>" +
-      (partner ? sphereHTML(partner, pFrac, "w7", Store.personName(partner), "partner") : "") +
-      "</div>" +
-      '<div class="tg-foot"><span class="tg-line">' + esc(st.line) + "</span>" +
-      '<button class="nudge glass' + (st.showNudge ? "" : " hidden") + '" id="nudge-btn">Nudge</button>' +
-      "</div></section>";
+  // 36px avatar inside a conic-gradient progress ring in the person's color.
+  function ringAvatarHTML(personId, frac, who) {
+    var pct = Math.round(frac * 100);
+    var name = Store.personName(personId) || "?";
+    return '<span class="strip-person" data-who="' + who + '">' +
+      '<span class="strip-ring js-ring" style="--c:' + Store.personColor(personId) + ";--p:" + pct + '" aria-hidden="true">' +
+      '<span class="strip-initial">' + esc(name.charAt(0).toUpperCase()) + "</span></span>" +
+      '<span class="strip-pct num js-pct" aria-label="' + esc(name) + ": " + pct + '%">' + pct + "%</span></span>";
   }
 
-  // v2 Phase A: 56px sync strip. Compact replacement for the Together card.
-  // Two 32px avatars with initials and percentages, meet-in-the-middle bar, 13px status.
-  // Tap expands the full Together card as a sheet.
+  // v2 Phase A strip, Calm glass: rings, percentages, center-meeting bar,
+  // status line with the Nudge on the right. Not tappable.
   function syncStripHTML(dateStr, me, partner) {
     var myFrac = dayFraction(dateStr, me);
     var pFrac = partner ? dayFraction(dateStr, partner) : 0;
     var synced = partner ? Pod.inSync(dateStr, me, partner) : false;
     var st = statusFor(dateStr, me, partner);
-    var youColor = Store.personColor(me);
-    var pColor = partner ? Store.personColor(partner) : "transparent";
-    var myPct = Math.round(myFrac * 100);
-    var pPct = Math.round(pFrac * 100);
-    var youVars = Colors.liquidVars(Store.getColorId(me));
-    var pVars = partner ? Colors.liquidVars(Store.getColorId(partner)) : "";
-    var myInitial = (Store.personName(me) || "Y").charAt(0).toUpperCase();
-    var pInitial = partner ? (Store.personName(partner) || "P").charAt(0).toUpperCase() : "";
-    // Status line shows unless Nudge is visible (then it's dropped for the button)
-    var statusHTML = st.showNudge ?
-      '<button class="nudge glass" id="nudge-btn-strip">Nudge</button>' :
-      '<span class="strip-status' + (synced ? " is-sync" : "") + '">' + esc(st.line) + "</span>";
-    return '<button class="sync-strip glass' + (synced ? " synced" : "") + '" id="sync-strip"' +
-      ' style="--you:' + youColor + ";--partner:" + pColor + '"' +
-      enterCls(2) + enterDelay(2) + ' aria-label="Together status. Tap to expand.">' +
-      '<span class="strip-row">' +
-      '<span class="strip-avatar" style="' + youVars + '" aria-label="' + esc(Store.personName(me)) + '">' +
-      '<span class="strip-liquid' + (myPct === 0 ? " empty" : "") + '" style="height:' + myPct + '%"></span>' +
-      '<span class="strip-initial">' + esc(myInitial) + '</span>' +
-      '<span class="strip-pct num' + (myFrac > 0.5 ? " on-liquid" : "") + '">' + myPct + "%</span></span>" +
+    return '<section class="sync-strip' + (synced ? " synced" : "") + '" id="sync-strip"' +
+      ' style="--you:' + Store.personColor(me) + ";--them:" + (partner ? Store.personColor(partner) : "transparent") + '"' +
+      ' aria-label="Together today">' +
+      '<div class="strip-row">' +
+      ringAvatarHTML(me, myFrac, "me") +
       '<span class="strip-bar" role="img" aria-label="Progress toward the middle">' +
       '<span class="strip-fill strip-fill-me" style="width:' + (myFrac * 50) + '%"></span>' +
       '<span class="strip-fill strip-fill-partner" style="width:' + (pFrac * 50) + '%"></span>' +
-      '<span class="strip-dot"></span></span>' +
-      (partner ?
-        '<span class="strip-avatar" style="' + pVars + '" aria-label="' + esc(Store.personName(partner)) + '">' +
-        '<span class="strip-liquid' + (pPct === 0 ? " empty" : "") + '" style="height:' + pPct + '%"></span>' +
-        '<span class="strip-initial">' + esc(pInitial) + '</span>' +
-        '<span class="strip-pct num' + (pFrac > 0.5 ? " on-liquid" : "") + '">' + pPct + "%</span></span>" : "") +
-      "</span>" + statusHTML + "</button>";
+      '<span class="strip-mid"></span></span>' +
+      (partner ? ringAvatarHTML(partner, pFrac, "partner") : "") +
+      "</div>" +
+      '<div class="strip-foot">' +
+      '<span class="strip-status' + (synced ? " is-sync" : "") + '">' + esc(st.line) + "</span>" +
+      '<button class="nudge' + (st.showNudge ? "" : " hidden") + '" id="nudge-btn-strip">Nudge</button>' +
+      "</div></section>";
   }
 
-  function paintSphere(card, who, frac) {
-    var wrap = card.querySelector('.sphere-wrap[data-who="' + who + '"]');
+  function paintRing(strip, who, frac) {
+    var wrap = strip.querySelector('.strip-person[data-who="' + who + '"]');
     if (!wrap) return;
     var pct = Math.round(frac * 100);
-    var liq = wrap.querySelector(".sphere-liquid");
-    liq.style.height = pct + "%";
-    liq.classList.toggle("empty", pct <= 0);
-    var num = wrap.querySelector(".sphere-pct");
-    num.textContent = pct + "%";
-    num.classList.toggle("on-liquid", frac > 0.5);
+    wrap.querySelector(".js-ring").style.setProperty("--p", pct);
+    var pctEl = wrap.querySelector(".js-pct");
+    pctEl.textContent = pct + "%";
+    var label = pctEl.getAttribute("aria-label") || "";
+    pctEl.setAttribute("aria-label", label.replace(/\d+%$/, pct + "%"));
   }
 
-  // Repaint the Together card in place so liquid and tube transitions play.
-  function paintTogether(dateStr, me, partner) {
-    var card = document.getElementById("tg-card");
-    if (!card) return;
-    var myFrac = dayFraction(dateStr, me);
-    var pFrac = partner ? dayFraction(dateStr, partner) : 0;
-    var synced = partner ? Pod.inSync(dateStr, me, partner) : false;
-    var st = statusFor(dateStr, me, partner);
-    card.classList.toggle("synced", synced);
-    var stEl = card.querySelector(".tg-status");
-    stEl.textContent = st.top;
-    stEl.classList.toggle("is-sync", synced);
-    paintSphere(card, "me", myFrac);
-    paintSphere(card, "partner", pFrac);
-    card.querySelector(".tube-you").style.width = (myFrac * 50) + "%";
-    card.querySelector(".tube-partner").style.width = (pFrac * 50) + "%";
-    var youColor = Store.personColor(me);
-    var pColor = partner ? Store.personColor(partner) : "transparent";
-    card.querySelector(".tube-you").style.background = synced ? "linear-gradient(90deg," + youColor + ",#BF5AF2)" : youColor;
-    card.querySelector(".tube-partner").style.background = synced ? "linear-gradient(90deg,#BF5AF2," + pColor + ")" : pColor;
-    card.querySelector(".tg-line").textContent = st.line;
-    var nb = card.querySelector("#nudge-btn");
-    if (nb) nb.classList.toggle("hidden", !st.showNudge);
-  }
-
-  // v2 Phase A: Repaint the sync strip in place.
+  // Repaint the sync strip in place so ring and bar transitions play.
   function paintStrip(dateStr, me, partner) {
     var strip = document.getElementById("sync-strip");
     if (!strip) return;
@@ -420,54 +341,15 @@ var Today = (function () {
     var synced = partner ? Pod.inSync(dateStr, me, partner) : false;
     var st = statusFor(dateStr, me, partner);
     strip.classList.toggle("synced", synced);
-    var myPct = Math.round(myFrac * 100);
-    var pPct = Math.round(pFrac * 100);
-    // Update avatars
-    var avatars = strip.querySelectorAll(".strip-avatar");
-    if (avatars[0]) {
-      var liq0 = avatars[0].querySelector(".strip-liquid");
-      liq0.style.height = myPct + "%";
-      liq0.classList.toggle("empty", myPct === 0);
-      var pct0 = avatars[0].querySelector(".strip-pct");
-      pct0.textContent = myPct + "%";
-      pct0.classList.toggle("on-liquid", myFrac > 0.5);
-      var init0 = avatars[0].querySelector(".strip-initial");
-      if (init0) init0.classList.toggle("on-liquid", myFrac > 0.5);
-    }
-    if (avatars[1] && partner) {
-      var liq1 = avatars[1].querySelector(".strip-liquid");
-      liq1.style.height = pPct + "%";
-      liq1.classList.toggle("empty", pPct === 0);
-      var pct1 = avatars[1].querySelector(".strip-pct");
-      pct1.textContent = pPct + "%";
-      pct1.classList.toggle("on-liquid", pFrac > 0.5);
-      var init1 = avatars[1].querySelector(".strip-initial");
-      if (init1) init1.classList.toggle("on-liquid", pFrac > 0.5);
-    }
-    // Update bar fills
+    paintRing(strip, "me", myFrac);
+    if (partner) paintRing(strip, "partner", pFrac);
     strip.querySelector(".strip-fill-me").style.width = (myFrac * 50) + "%";
-    var pfPartner = strip.querySelector(".strip-fill-partner");
-    if (pfPartner) pfPartner.style.width = (pFrac * 50) + "%";
-    // Update status or nudge
+    strip.querySelector(".strip-fill-partner").style.width = (pFrac * 50) + "%";
     var statusEl = strip.querySelector(".strip-status");
+    statusEl.textContent = st.line;
+    statusEl.classList.toggle("is-sync", synced);
     var nudgeEl = strip.querySelector("#nudge-btn-strip");
-    if (st.showNudge) {
-      if (statusEl) statusEl.remove();
-      if (!nudgeEl) {
-        var nb = document.createElement("button");
-        nb.className = "nudge glass";
-        nb.id = "nudge-btn-strip";
-        nb.textContent = "Nudge";
-        nb.addEventListener("click", function (e) { e.stopPropagation(); nudge(); });
-        strip.appendChild(nb);
-      }
-    } else {
-      if (nudgeEl) nudgeEl.remove();
-      if (statusEl) {
-        statusEl.textContent = st.line;
-        statusEl.classList.toggle("is-sync", synced);
-      }
-    }
+    if (nudgeEl) nudgeEl.classList.toggle("hidden", !st.showNudge);
   }
 
   /* ----- Nudge (Web Share; removed from the Sync screen per the brief) ----- */
@@ -503,44 +385,35 @@ var Today = (function () {
     playSyncMoment(me, partner);
   }
 
+  // Calm glass: the drop-down pill is the whole sync moment.
   function playSyncMoment(me, partner) {
-    var card = document.getElementById("tg-card");
-    if (card) card.classList.add("synced");
-    // v2 Phase A: animate the strip (glow + shimmer)
     var strip = document.getElementById("sync-strip");
-    if (strip) {
-      strip.classList.add("synced", "playing");
-      setTimeout(function () { strip.classList.remove("playing"); }, 2500);
-    }
-
-    var bloom = document.createElement("div");
-    bloom.className = "sync-bloom";
-    bloom.setAttribute("aria-hidden", "true");
-    document.body.appendChild(bloom);
+    if (strip) strip.classList.add("synced");
 
     var drop = document.createElement("div");
-    drop.className = "sync-drop glass";
+    drop.className = "sync-drop";
     drop.setAttribute("role", "status");
     drop.innerHTML = '<span class="sd-avatars">' + avatarHTML(me, 26) + avatarHTML(partner, 26) + "</span>" +
       "<span>You're in sync today</span>";
     document.body.appendChild(drop);
 
     requestAnimationFrame(function () {
-      requestAnimationFrame(function () {
-        bloom.classList.add("go");
-        drop.classList.add("go");
-      });
+      requestAnimationFrame(function () { drop.classList.add("go"); });
     });
     setTimeout(function () {
       drop.classList.remove("go");
-      setTimeout(function () {
-        drop.remove();
-        bloom.remove();
-      }, 600);
+      setTimeout(function () { drop.remove(); }, 600);
     }, 3200);
   }
 
   /* ----- tiles ----- */
+  // Every tile: label (+ partner chip) on top, value, one caption, and a
+  // 4px progress bar in --person along the bottom edge.
+  function tileTopHTML(name, partner, pText) {
+    return '<span class="t-top"><span class="t-label">' + esc(name) + "</span>" +
+      (partner ? chipHTML(partner, pText) : "") + "</span>";
+  }
+
   function waterLabel(habit, val, me, partner) {
     var target = habit.targets[me];
     var s = "Water: " + val + " of " + target + " glasses.";
@@ -557,18 +430,11 @@ var Today = (function () {
     var val = Data.value(dateStr, me, habit.id) || 0;
     var pVal = partner ? Data.value(dateStr, partner, habit.id) : undefined;
     var pText = (pVal === undefined || pVal === null) ? "not yet" : pVal + "/" + habit.targets[partner];
-    var pct = Math.min(val / target, 1);
-    var done = val >= target;
-    return '<button class="tile tile-water' + (done ? " has-badge" : "") + '" data-habit="water" style="--tint:' + TINTS.water + ';" aria-label="' + esc(waterLabel(habit, val, me, partner)) + '">' +
-      '<span class="t-liquid" aria-hidden="true"><span class="t-liquid-fill js-wfill" style="height:' + (6 + 54 * pct) + '%">' +
-      waveSVG("var(--water-top)", "wfill") +
-      '<i class="bub b1"></i><i class="bub b2"></i><i class="bub b3"></i><i class="bub b4"></i>' +
-      "</span></span>" +
-      '<span class="t-topgroup"><span class="t-label deep-water">' + ICONS.water + "Water</span>" +
-      '<span class="w-num num"><span class="js-wval">' + val + "</span><small> / " + target + "</small></span>" +
-      '<span class="t-cap t-cap-pour">tap to pour</span></span>' +
-      (partner ? '<span class="t-chip-abs">' + chipHTML(partner, pText) + "</span>" : "") +
-      '<span class="t-check js-wcheck' + (done ? "" : " hidden") + '" aria-hidden="true">' + ICONS.badge + "</span>" +
+    return '<button class="tile tile-water" data-habit="water" aria-label="' + esc(waterLabel(habit, val, me, partner)) + '">' +
+      tileTopHTML("Water", partner, pText) +
+      '<span class="t-main"><span class="t-num num js-wval">' + val + "</span>" +
+      '<span class="t-cap">of ' + target + (target === 1 ? " glass" : " glasses") + "</span></span>" +
+      barHTML(target ? val / target : 0) +
       "</button>";
   }
 
@@ -576,31 +442,8 @@ var Today = (function () {
     var me = Store.get("person");
     var target = habit.targets[me];
     tileEl.querySelector(".js-wval").textContent = val;
-    tileEl.querySelector(".js-wfill").style.height = (6 + 54 * Math.min(val / target, 1)) + "%";
-    var badge = tileEl.querySelector(".js-wcheck");
-    var done = val >= target;
-    tileEl.classList.toggle("has-badge", done);
-    if (done && badge.classList.contains("hidden")) {
-      badge.classList.remove("hidden", "pop");
-      void badge.offsetWidth;
-      badge.classList.add("pop");
-    } else if (!done) {
-      badge.classList.add("hidden");
-      badge.classList.remove("pop");
-    }
+    paintBar(tileEl, target ? val / target : 0);
     tileEl.setAttribute("aria-label", waterLabel(habit, val, me, Store.partnerId()));
-  }
-
-  function floatOne(tileEl, e) {
-    var r = tileEl.getBoundingClientRect();
-    var x = e && e.clientX ? (e.clientX - r.left) : r.width / 2;
-    var s = document.createElement("span");
-    s.className = "floatup num";
-    s.textContent = "+1";
-    s.style.left = Math.max(8, Math.min(r.width - 40, x - 12)) + "px";
-    s.style.top = "46%";
-    tileEl.appendChild(s);
-    s.addEventListener("animationend", function () { s.remove(); });
   }
 
   function weekCount(habit, dateStr, personId) {
@@ -623,30 +466,22 @@ var Today = (function () {
     var target = habit.targets[me];
     var n = weekCount(habit, dateStr, me);
     var pn = partner ? weekCount(habit, dateStr, partner) : 0;
-    var vials = "";
-    for (var i = 0; i < target; i++) vials += '<span class="vial"><i></i></span>';
-    return '<button class="tile tile-ex" data-habit="exercise" style="--tint:' + TINTS.exercise + ';" aria-label="' + esc(exerciseLabel(habit, n, me, partner)) + '">' +
-      '<span class="t-top"><span class="t-label deep-exercise">' + ICONS.exercise + "Exercise</span>" +
-      (partner ? chipHTML(partner, pn + "/" + habit.targets[partner], true) : "") + "</span>" +
-      '<span class="x-num num"><span class="js-xval">' + n + "</span><small> / " + target + "</small></span>" +
-      '<span class="t-cap">this week</span>' +
-      '<span class="vials js-vials" aria-hidden="true">' + vials + "</span>" +
+    var dots = "";
+    for (var i = 0; i < target; i++) dots += '<i class="x-dot' + (i < n ? " on" : "") + '"></i>';
+    return '<button class="tile tile-ex" data-habit="exercise" aria-label="' + esc(exerciseLabel(habit, n, me, partner)) + '">' +
+      tileTopHTML("Exercise", partner, pn + "/" + habit.targets[partner]) +
+      '<span class="t-main"><span class="t-numrow"><span class="t-num num js-xval">' + n + "</span>" +
+      '<span class="x-dots" aria-hidden="true">' + dots + "</span></span>" +
+      '<span class="t-cap">of ' + target + " this week</span></span>" +
+      barHTML(target ? n / target : 0) +
       "</button>";
   }
 
-  function paintVials(tileEl, n, target) {
-    var filled = Math.min(n, target);
-    tileEl.querySelectorAll(".vial").forEach(function (v, i) {
-      // rAF so the CSS transition plays from empty on first paint too.
-      requestAnimationFrame(function () {
-        requestAnimationFrame(function () { v.classList.toggle("on", i < filled); });
-      });
-    });
-  }
-
   function paintExercise(tileEl, habit, n) {
+    var target = habit.targets[Store.get("person")];
     tileEl.querySelector(".js-xval").textContent = n;
-    paintVials(tileEl, n, habit.targets[Store.get("person")]);
+    tileEl.querySelectorAll(".x-dot").forEach(function (d, i) { d.classList.toggle("on", i < n); });
+    paintBar(tileEl, target ? n / target : 0);
     tileEl.setAttribute("aria-label", exerciseLabel(habit, n, Store.get("person"), Store.partnerId()));
   }
 
@@ -659,29 +494,17 @@ var Today = (function () {
     return s + " Tap to log steps.";
   }
 
-  function trailSVG(progress) {
-    var off = (100 * (1 - Math.min(progress, 1))).toFixed(1);
-    return '<svg class="trail" viewBox="0 0 140 38" aria-hidden="true">' +
-      '<path d="M6 30 C 40 30, 40 8, 70 8 S 100 30, 134 30" pathLength="100" fill="none" ' +
-      'stroke="rgba(127,127,140,0.25)" stroke-width="6" stroke-linecap="round"/>' +
-      '<path d="M6 30 C 40 30, 40 8, 70 8 S 100 30, 134 30" pathLength="100" fill="none" ' +
-      'style="stroke:var(--steps-ink)" stroke-width="6" stroke-linecap="round" ' +
-      'stroke-dasharray="100" stroke-dashoffset="' + off + '" class="js-trail"/></svg>';
-  }
-
   function stepsTile(habit, dateStr, me, partner) {
     var target = habit.targets[me];
     var val = Data.value(dateStr, me, habit.id);
     var pVal = partner ? Data.value(dateStr, partner, habit.id) : undefined;
     var pText = (pVal === undefined || pVal === null) ? "not yet" : fmtSteps(pVal);
-    var progress = (val === undefined || val === null) ? 0 : Math.min(val / target, 1);
-    var done = val !== undefined && val !== null && val >= target;
-    return '<button class="tile tile-steps" data-habit="steps" style="--tint:' + TINTS.steps + '" aria-label="' + esc(stepsLabel(habit, val, me, partner)) + '">' +
-      '<span class="t-top"><span class="t-label deep-steps">' + ICONS.steps + "Steps</span></span>" +
-      (partner ? '<span class="t-chip-abs">' + chipHTML(partner, pText) + "</span>" : "") +
-      '<span class="s-bottom"><span class="s-numrow"><span class="s-num num js-sval">' + fmtStepsFull(val) + "</span>" +
-      '<span class="s-done js-sdone' + (done ? "" : " hidden") + '" aria-hidden="true">' + ICONS.badge + "</span></span>" +
-      trailSVG(progress) + "</span>" +
+    var progress = (val === undefined || val === null || !target) ? 0 : val / target;
+    return '<button class="tile tile-steps" data-habit="steps" aria-label="' + esc(stepsLabel(habit, val, me, partner)) + '">' +
+      tileTopHTML("Steps", partner, pText) +
+      '<span class="t-main"><span class="t-num num js-sval">' + fmtStepsFull(val) + "</span>" +
+      '<span class="t-cap">of ' + Number(target).toLocaleString("en-US") + " steps</span></span>" +
+      barHTML(progress) +
       "</button>";
   }
 
@@ -689,26 +512,29 @@ var Today = (function () {
     var me = Store.get("person");
     var target = habit.targets[me];
     tileEl.querySelector(".js-sval").textContent = fmtStepsFull(val);
-    var progress = (val === undefined || val === null) ? 0 : Math.min(val / target, 1);
-    tileEl.querySelector(".js-trail").style.strokeDashoffset = (100 * (1 - progress)).toFixed(1);
-    var done = val !== undefined && val !== null && val >= target;
-    var badge = tileEl.querySelector(".js-sdone");
-    if (done && badge.classList.contains("hidden")) {
-      badge.classList.remove("hidden", "pop");
-      void badge.offsetWidth;
-      badge.classList.add("pop");
-    } else if (!done) {
-      badge.classList.add("hidden");
-      badge.classList.remove("pop");
-    }
+    paintBar(tileEl, (val === undefined || val === null || !target) ? 0 : val / target);
     tileEl.setAttribute("aria-label", stepsLabel(habit, val, me, Store.partnerId()));
   }
 
-  function genericTile(habit, dateStr, me, partner, tint) {
+  function checkState(habit, val) {
+    var inverted = !!habit.inverted;
+    // Inverted checks (Sugar-free) default to clean (true) when no value stored
+    var done = (val === undefined || val === null) ? inverted : !!val;
+    var label, cap;
+    if (inverted) {
+      label = habit.name + (done ? ": clean. Tap if you had sugar." : ": had sugar. Tap to mark clean.");
+      cap = done ? "clean" : "had sugar";
+    } else {
+      label = habit.name + (done ? ": done. Tap to undo." : ": not done. Tap to mark done.");
+      cap = done ? "done" : "tap to check";
+    }
+    return { done: done, label: label, cap: cap };
+  }
+
+  function genericTile(habit, dateStr, me, partner) {
     var target = habit.targets[me] || 1;
     var val = Data.value(dateStr, me, habit.id);
     var isCheck = habit.type === "check";
-    tint = tint || TINTS[habit.id] || "#A259FF";
     var pVal = partner ? Data.value(dateStr, partner, habit.id) : undefined;
     var pTarget = partner ? (habit.targets[partner] || 1) : 1;
     var pText;
@@ -725,68 +551,43 @@ var Today = (function () {
     else pText = pVal + "/" + pTarget;
 
     if (isCheck) {
-      var inverted = !!habit.inverted;
-      // Inverted checks (Sugar-free) default to clean (true) when no value stored
-      var done = (val === undefined || val === null) ? (inverted ? true : false) : !!val;
-      var label, cap;
-      if (inverted) {
-        label = esc(habit.name) + (done ? ": clean. Tap if you had sugar." : ": had sugar. Tap to mark clean.");
-        cap = done ? "clean" : "had sugar";
-      } else {
-        label = esc(habit.name) + (done ? ": done. Tap to undo." : ": not done. Tap to mark done.");
-        cap = done ? "done" : "tap to check";
-      }
-      return '<button class="tile tile-check' + (inverted ? " tile-inverted" : "") + '" data-habit="' + esc(habit.id) + '" style="--tint:' + tint + ';--gtint:' + tint + '" aria-label="' + label + '">' +
-        '<span class="t-top"><span class="t-label">' + esc(habit.name) + "</span></span>" +
-        (partner ? '<span class="t-chip-abs">' + chipHTML(partner, pText) + "</span>" : "") +
-        '<span class="check-circle js-gcheck' + (done ? " on" : "") + '" aria-hidden="true">' + ICONS.check + "</span>" +
-        '<span class="t-cap">' + cap + "</span>" +
+      var cs = checkState(habit, val);
+      return '<button class="tile tile-check' + (habit.inverted ? " tile-inverted" : "") + '" data-habit="' + esc(habit.id) + '" aria-label="' + esc(cs.label) + '">' +
+        tileTopHTML(habit.name, partner, pText) +
+        '<span class="t-main"><span class="check-circle js-gcheck' + (cs.done ? " on" : "") + '" aria-hidden="true">' + ICONS.badge + "</span>" +
+        '<span class="t-cap js-gcap">' + cs.cap + "</span></span>" +
+        barHTML(cs.done ? 1 : 0) +
         "</button>";
     }
 
-    var done, displayVal, pct;
     val = val || 0;
-    done = val >= target;
-    displayVal = val;
-    pct = Math.min(val / target, 1);
     var unit = habit.unit || "times";
-    var clabel = esc(habit.name) + ": " + displayVal + " of " + target + ". Tap to add one.";
-    return '<button class="tile tile-generic" data-habit="' + esc(habit.id) + '" style="--tint:' + tint + ';--gtint:' + tint + '" aria-label="' + clabel + '">' +
-      '<span class="t-top"><span class="t-label">' + esc(habit.name) + "</span>" +
-      (partner ? chipHTML(partner, pText, true) : "") + "</span>" +
-      '<span class="g-num num"><span class="js-gval">' + displayVal + "</span><small> / " + target + "</small></span>" +
-      '<span class="t-cap">' + esc(unit) + "</span>" +
-      '<span class="g-bar" aria-hidden="true"><i class="js-gfill" style="width:' + Math.round(pct * 100) + '%"></i></span>' +
+    var clabel = habit.name + ": " + val + " of " + target + ". Tap to add one.";
+    return '<button class="tile tile-generic" data-habit="' + esc(habit.id) + '" aria-label="' + esc(clabel) + '">' +
+      tileTopHTML(habit.name, partner, pText) +
+      '<span class="t-main"><span class="t-num num js-gval">' + val + "</span>" +
+      '<span class="t-cap">of ' + target + " " + esc(unit) + "</span></span>" +
+      barHTML(val / target) +
       "</button>";
   }
 
   function paintGeneric(tileEl, habit, val) {
     var me = Store.get("person");
     var target = habit.targets[me] || 1;
-    var isCheck = habit.type === "check";
-    if (isCheck) {
-      var inverted = !!habit.inverted;
-      var done = (val === undefined || val === null) ? (inverted ? true : false) : !!val;
+    if (habit.type === "check") {
+      var cs = checkState(habit, val);
       var circle = tileEl.querySelector(".js-gcheck");
-      if (circle) circle.classList.toggle("on", done);
-      var cap = tileEl.querySelector(".t-cap");
-      if (cap) {
-        if (inverted) cap.textContent = done ? "clean" : "had sugar";
-        else cap.textContent = done ? "done" : "tap to check";
-      }
-      var ariaLabel;
-      if (inverted) ariaLabel = esc(habit.name) + (done ? ": clean. Tap if you had sugar." : ": had sugar. Tap to mark clean.");
-      else ariaLabel = esc(habit.name) + (done ? ": done. Tap to undo." : ": not done. Tap to mark done.");
-      tileEl.setAttribute("aria-label", ariaLabel);
+      if (circle) circle.classList.toggle("on", cs.done);
+      var cap = tileEl.querySelector(".js-gcap");
+      if (cap) cap.textContent = cs.cap;
+      paintBar(tileEl, cs.done ? 1 : 0);
+      tileEl.setAttribute("aria-label", cs.label);
       return;
     }
     val = val || 0;
-    var done = val >= target;
-    var displayVal = val;
-    var pct = Math.min(val / target, 1);
-    tileEl.querySelector(".js-gval").textContent = displayVal;
-    tileEl.querySelector(".js-gfill").style.width = Math.round(pct * 100) + "%";
-    tileEl.setAttribute("aria-label", esc(habit.name) + ": " + displayVal + " of " + target + ". Tap to add one.");
+    tileEl.querySelector(".js-gval").textContent = val;
+    paintBar(tileEl, val / target);
+    tileEl.setAttribute("aria-label", habit.name + ": " + val + " of " + target + ". Tap to add one.");
   }
 
   /* ----- Meals (v2 Phase B): log what/when/tags, day signal line ----- */
@@ -861,8 +662,7 @@ var Today = (function () {
     return '<button class="tile tile-meals" data-habit="meals" aria-label="Meals. ' + esc(line) + '. Tap to log a meal.">' +
       '<span class="t-top"><span class="t-label">Meals</span>' +
       '<span class="meal-dot ' + dotClass + '" aria-hidden="true"></span></span>' +
-      '<span class="t-cap meal-signal">' + esc(line) + "</span>" +
-      '<span class="t-cap meal-caption">based on what you tagged</span>' +
+      '<span class="t-main"><span class="t-cap meal-signal">' + esc(line) + "</span></span>" +
       "</button>";
   }
 
@@ -974,14 +774,11 @@ var Today = (function () {
       var ai = order.indexOf(a.id), bi = order.indexOf(b.id);
       return (ai < 0 ? 99 : ai) - (bi < 0 ? 99 : bi);
     });
-    var extraIdx = 0;
     var tiles = sorted.map(function (h) {
       if (h.id === "water") return waterTile(h, dateStr, me, partner);
       if (h.id === "exercise") return exerciseTile(h, dateStr, me, partner);
       if (h.id === "steps") return stepsTile(h, dateStr, me, partner);
-      var tint = EXTRA_TINTS[extraIdx % EXTRA_TINTS.length];
-      extraIdx++;
-      return genericTile(h, dateStr, me, partner, tint);
+      return genericTile(h, dateStr, me, partner);
     }).join("");
     // v2 Phase B: Meals tile appended after habit tiles
     tiles += mealsTile(dateStr, me, partner);
@@ -1115,23 +912,44 @@ var Today = (function () {
   /* ----- tile interactions ----- */
 
   // A long-press opens a sheet while the finger is still down. Releasing the
-  // finger then fires a click on whatever the sheet put under it, which could
-  // toggle a control by accident. Swallow that one synthetic click.
+  // finger may then fire a click on whatever the sheet put under it, which
+  // could toggle a control by accident. Swallow only a click that lands within
+  // 400ms of that release. iOS often sends no click at all after a 500ms hold,
+  // so a guard that waited longer would eat the user's first real tap.
   function swallowReleaseClick() {
-    function onClick(e) {
+    var windowTimer = null;
+    var safety = null;
+    function disarm() {
       document.removeEventListener("click", onClick, true);
+      document.removeEventListener("pointerup", onRelease, true);
+      document.removeEventListener("pointercancel", disarm, true);
+      clearTimeout(windowTimer);
       clearTimeout(safety);
+    }
+    function onClick(e) {
+      disarm();
       e.stopPropagation();
       e.preventDefault();
     }
-    var safety = setTimeout(function () {
-      document.removeEventListener("click", onClick, true);
-    }, 10000);
+    function onRelease() {
+      document.removeEventListener("pointerup", onRelease, true);
+      windowTimer = setTimeout(disarm, 400);
+    }
     document.addEventListener("click", onClick, true);
+    document.addEventListener("pointerup", onRelease, true);
+    document.addEventListener("pointercancel", disarm, true);
+    // Never stay armed if the release is somehow missed.
+    safety = setTimeout(disarm, 5000);
   }
 
+  // Last time anything scrolled (window or an inner scroller). A tap that
+  // lands while momentum scrolling is just the finger stopping the scroll,
+  // not a +1.
+  var lastScrollAt = 0;
+  window.addEventListener("scroll", function () { lastScrollAt = Date.now(); }, { passive: true, capture: true });
+
   function bindTile(el, habit) {
-    var press = { timer: null, long: false, x: 0, y: 0, id: null };
+    var press = { timer: null, long: false, moved: false, x: 0, y: 0, id: null, at: 0 };
 
     function armLongPress(fn) {
       press.long = false;
@@ -1150,8 +968,14 @@ var Today = (function () {
 
     el.addEventListener("pointerdown", function (e) {
       if (e.pointerType === "mouse" && e.button !== 0) return;
-      el.classList.add("pressing");
+      press.moved = false;
+      press.long = false;
+      press.at = Date.now();
+      // Touching down mid-scroll only stops the momentum; no press feedback.
+      if (press.at - lastScrollAt < 150) press.moved = true;
+      else el.classList.add("pressing");
       press.x = e.clientX; press.y = e.clientY; press.id = e.pointerId;
+      if (press.moved) return;
       if (habit.id === "water") {
         armLongPress(function () {
           var me = Store.get("person");
@@ -1170,15 +994,27 @@ var Today = (function () {
       }
     });
     el.addEventListener("pointermove", function (e) {
-      if (press.id !== e.pointerId) return;
-      if (Math.hypot(e.clientX - press.x, e.clientY - press.y) > 10) clearTimeout(press.timer);
+      if (press.id !== e.pointerId || press.moved) return;
+      // Past 10px it's a drag or scroll: cancel both the tap and the long-press.
+      if (Math.hypot(e.clientX - press.x, e.clientY - press.y) > 10) {
+        press.moved = true;
+        clearPress();
+      }
     });
     el.addEventListener("pointerup", function (e) {
       clearPress();
-      if (press.long || press.id !== e.pointerId) return;
+      if (press.long || press.moved || press.id !== e.pointerId) return;
+      press.id = null;
+      // Something scrolled during (or just before) this press: not a tap.
+      if (Date.now() - lastScrollAt < 150 || lastScrollAt >= press.at) return;
       activateTile(el, habit, e);
     });
-    el.addEventListener("pointercancel", clearPress);
+    // The browser took the gesture over (usually a scroll): treat as cancel.
+    el.addEventListener("pointercancel", function () {
+      press.moved = true;
+      press.id = null;
+      clearPress();
+    });
     el.addEventListener("pointerleave", function () { el.classList.remove("pressing"); });
     el.addEventListener("keydown", function (e) {
       if (e.key !== "Enter" && e.key !== " ") return;
@@ -1186,10 +1022,6 @@ var Today = (function () {
       activateTile(el, habit, e);
     });
     el.addEventListener("contextmenu", function (e) { e.preventDefault(); });
-
-    if (habit.id === "exercise") {
-      paintVials(el, weekCount(habit, viewedDate(), Store.get("person")), habit.targets[Store.get("person")]);
-    }
   }
 
   function activateTile(el, habit, e) {
@@ -1198,10 +1030,7 @@ var Today = (function () {
     if (habit.id === "water") {
       var prev = Data.value(d, me, habit.id) || 0;
       var val = prev + (habit.step || 1);
-      logTile(habit, val, el, function (v) {
-        paintWater(el, habit, v);
-        if (v === val) floatOne(el, e);
-      });
+      logTile(habit, val, el, function (v) { paintWater(el, habit, v); });
       return;
     }
     if (habit.id === "exercise") {
@@ -1256,32 +1085,23 @@ var Today = (function () {
   }
 
   /* ----- header ----- */
-  function headerHTML(dateStr, me, partner) {
+  // 34px title with the gear on the right; the date line under it doubles
+  // as the compact day navigator (‹ date ›).
+  function headerHTML(dateStr) {
     var past = dateStr !== localDate();
     var title = past ? dateLabel() : "Today";
-    return '<div class="top-row">' +
+    return '<header class="today-head">' +
+      '<div class="today-titlerow">' +
+      '<h1 class="screen-title">' + esc(title) + "</h1>" +
+      '<button class="gear-btn" id="today-gear" aria-label="Habits and settings">' + ICONS.gear + "</button>" +
+      "</div>" +
       '<div class="date-nav">' +
       '<button class="dnav" data-nav="-1" aria-label="Previous day"' + (dateOffset <= -MAX_BACK ? " disabled" : "") + ">&#8249;</button>" +
-      '<span class="top-date">' + esc(fullDateLabel()) + "</span>" +
+      '<span class="screen-sub top-date">' + esc(fullDateLabel()) + "</span>" +
       '<button class="dnav" data-nav="1" aria-label="Next day"' + (dateOffset >= 0 ? " disabled" : "") + ">&#8250;</button>" +
       "</div>" +
-      (partner
-        ? '<div class="pair-capsule" aria-label="You and ' + esc(Store.personName(partner)) + '">' +
-          '<span class="pair-pair">' + avatarHTML(me, 30) + avatarHTML(partner, 30) + "</span></div>"
-        : '<div class="pair-capsule" aria-label="Just you">' + avatarHTML(me, 30) + "</div>") +
-      "</div>" +
-      '<div class="title-block"' + enterCls(1) + enterDelay(1) + ">" +
-      '<h1 class="screen-title">' + esc(title) + "</h1>" +
-      '<div class="greeting">' + esc(greeting()) + "</div>" +
-      (past ? '<button class="back-pill glass" id="back-today">Back to today</button>' : "") +
-      "</div>";
-  }
-
-  function habitsHeadHTML(partner) {
-    return '<div class="habits-head"' + enterCls(3) + enterDelay(3) + ">" +
-      '<h2 class="habits-title">Habits</h2>' +
-      (partner ? '<div class="habits-corner">' + esc(Store.personName(partner)) + " in the corner</div>" : "") +
-      "</div>";
+      (past ? '<button class="back-pill" id="back-today">Back to today</button>' : "") +
+      "</header>";
   }
 
   /* ----- render ----- */
@@ -1294,7 +1114,8 @@ var Today = (function () {
       '<div class="skel skel-head"></div>' +
       '<div class="skel skel-card"></div>' +
       '<div class="skel-grid">' +
-      '<div class="skel skel-tile skel-tall"></div>' +
+      '<div class="skel skel-tile"></div>' +
+      '<div class="skel skel-tile"></div>' +
       '<div class="skel skel-tile"></div>' +
       '<div class="skel skel-tile"></div>' +
       "</div></div>";
@@ -1353,19 +1174,22 @@ var Today = (function () {
     paintInkVars();
 
     root.innerHTML =
-      headerHTML(dateStr, me, partner) +
+      headerHTML(dateStr) +
       syncStripHTML(dateStr, me, partner) +
-      habitsHeadHTML(partner) +
-      '<div class="tile-grid"' + enterCls(4) + enterDelay(4) + ">" + tilesHTML(habitList, dateStr, me, partner) + "</div>" +
-      '<button class="add-habit js-add-habit"' + enterCls(5) + enterDelay(5) + ' aria-label="Add a habit">' +
-      ICONS.plus + "<span>Add Habit</span></button>" +
-      gapCardHTML();
+      '<div class="tile-grid">' + tilesHTML(habitList, dateStr, me, partner) + "</div>" +
+      '<button class="add-habit js-add-habit" aria-label="Add a habit">' +
+      ICONS.plus + "<span>Add Habit</span></button>";
 
     root.querySelectorAll(".dnav").forEach(function (b) {
       b.addEventListener("click", function () { setDay(dateOffset + Number(b.dataset.nav)); });
     });
     var backBtn = document.getElementById("back-today");
     if (backBtn) backBtn.addEventListener("click", function () { setDay(0); });
+
+    var gear = document.getElementById("today-gear");
+    if (gear) gear.addEventListener("click", function () {
+      if (window.App && typeof App.openSettings === "function") App.openSettings();
+    });
 
     root.querySelectorAll(".tile").forEach(function (el) {
       var habit = habitList.filter(function (h) { return h.id === el.dataset.habit; })[0];
@@ -1378,45 +1202,13 @@ var Today = (function () {
       openMealSheet(dateStr, me);
     });
 
-    var nudgeBtn = document.getElementById("nudge-btn");
-    if (nudgeBtn) nudgeBtn.addEventListener("click", nudge);
-
-    // v2 Phase A: strip tap expands the full Together card as a sheet
-    var strip = document.getElementById("sync-strip");
-    if (strip) strip.addEventListener("click", function (e) {
-      // Don't open the sheet if the Nudge button was tapped
-      if (e.target.closest("#nudge-btn-strip")) return;
-      var fullCard = togetherHTML(dateStr, me, partner);
-      openSheet("Together", null, fullCard);
-      // Wire up the nudge button inside the sheet
-      var sheetNudge = document.querySelector(".sheet #nudge-btn");
-      if (sheetNudge) sheetNudge.addEventListener("click", function (ev) {
-        ev.stopPropagation();
-        nudge();
-      });
-    });
-
     var nudgeStripBtn = document.getElementById("nudge-btn-strip");
-    if (nudgeStripBtn) nudgeStripBtn.addEventListener("click", function (e) {
-      e.stopPropagation();
-      nudge();
-    });
+    if (nudgeStripBtn) nudgeStripBtn.addEventListener("click", nudge);
 
     var addBtn = root.querySelector(".js-add-habit");
     if (addBtn) addBtn.addEventListener("click", function () {
       if (window.Manage && typeof Manage.addSheet === "function") Manage.addSheet();
     });
-
-    bindGapCard();
-
-    if (firstRender) {
-      root.querySelectorAll(".press-in").forEach(function (el) {
-        requestAnimationFrame(function () {
-          requestAnimationFrame(function () { el.classList.add("in"); });
-        });
-      });
-      firstRender = false;
-    }
 
     // Foreground case: the day became synced elsewhere and the moment has
     // not shown on this device yet. The per-day flag keeps it to once.
@@ -1424,102 +1216,37 @@ var Today = (function () {
   }
 
 
-  /* ----- v2 Phase C: "Got a gap?" free-time card ----- */
-  var gapState = { gap: 0, tag: "All", picked: null };
-
-  function gapCardHTML() {
-    var sizes = Backlog.SIZES.map(function (s) {
-      return '<button class="gap-size" data-gap="' + s + '">' + Backlog.sizeLabel(s) + "</button>";
-    }).join("");
-    var tags = Backlog.FILTER_TAGS.map(function (t) {
-      return '<button class="gap-tag' + (t === "All" ? " on" : "") + '" data-tag="' + t + '">' + t + "</button>";
-    }).join("");
-    return '<section class="gap-card glass"' + enterCls(6) + enterDelay(6) + ' aria-label="Free time">' +
-      '<div class="gap-head"><span class="gap-title">Got a gap?</span></div>' +
-      '<div class="gap-sizes">' + sizes + "</div>" +
-      '<div class="gap-tags">' + tags + "</div>" +
-      '<div class="gap-results" id="gap-results"><p class="gap-hint">Pick a size to see what fits.</p></div>' +
-      '<button class="gap-add" id="gap-add">' + ICONS.plus + "<span>Add to backlog</span></button>" +
-      "</section>";
-  }
-
-  function gapResultsHTML(list) {
-    if (!Backlog.count()) {
-      return '<p class="gap-hint">Backlog is empty. Add a few things first.</p>';
-    }
-    if (!list.length) {
-      return '<p class="gap-hint">Nothing fits. Try a bigger gap or another tag.</p>';
-    }
-    var rows = list.map(function (it) {
-      return '<button class="gap-pick' + (gapState.picked === it.id ? " sel" : "") + '" data-id="' + esc(it.id) + '">' +
-        '<span class="gap-pickwhat">' + esc(it.what) + "</span>" +
-        '<span class="bl-sizechip">' + Backlog.sizeLabel(it.size) + "</span></button>";
-    }).join("");
-    return rows + '<button class="gap-shuffle" id="gap-shuffle">Shuffle</button>';
-  }
-
-  function paintGapResults(list) {
-    var box = document.getElementById("gap-results");
-    if (!box) return;
-    box.innerHTML = gapResultsHTML(list || []);
-    box.querySelectorAll(".gap-pick").forEach(function (b) {
-      b.addEventListener("click", function () {
-        // Phase C: selecting only. Starting a timed block is Phase D.
-        gapState.picked = b.dataset.id;
-        box.querySelectorAll(".gap-pick").forEach(function (x) {
-          x.classList.toggle("sel", x.dataset.id === gapState.picked);
-        });
-      });
-    });
-    var sh = document.getElementById("gap-shuffle");
-    if (sh) sh.addEventListener("click", function () {
-      gapState.picked = null;
-      paintGapResults(Backlog.shuffleThree(gapState.gap, gapState.tag));
-    });
-  }
-
-  function showGapPicks() {
-    if (!gapState.gap) return;
-    gapState.picked = null;
-    Backlog.load().then(function () {
-      paintGapResults(Backlog.pickThree(gapState.gap, gapState.tag));
-    }, function () {
-      var box = document.getElementById("gap-results");
-      if (box) box.innerHTML = '<p class="gap-hint">Couldn\'t load the backlog. Check your connection.</p>';
-    });
-  }
-
-  function bindGapCard() {
-    var card = document.querySelector(".gap-card");
-    if (!card) return;
-    // Prefetch the backlog so taps answer instantly.
-    Backlog.load().catch(function () {});
-    card.querySelectorAll(".gap-size").forEach(function (b) {
-      b.addEventListener("click", function () {
-        card.querySelectorAll(".gap-size").forEach(function (x) { x.classList.remove("on"); });
-        b.classList.add("on");
-        gapState.gap = Number(b.dataset.gap);
-        showGapPicks();
-      });
-    });
-    card.querySelectorAll(".gap-tag").forEach(function (b) {
-      b.addEventListener("click", function () {
-        card.querySelectorAll(".gap-tag").forEach(function (x) { x.classList.remove("on"); });
-        b.classList.add("on");
-        gapState.tag = b.dataset.tag;
-        showGapPicks();
-      });
-    });
-    var add = document.getElementById("gap-add");
-    if (add) add.addEventListener("click", function () {
-      if (window.Backlog && typeof Backlog.openAddSheet === "function") Backlog.openAddSheet();
-    });
-  }
-
   /* ----- init ----- */
   function init() {
     render();
   }
+
+  // Swipe left/right on the main area to change days (mobile friendliness).
+  // Listeners stay passive so vertical scrolling never waits on JS; the
+  // decision is made once, on touchend. iOS convention: swipe right (finger
+  // moves left to right) goes back a day, swipe left goes forward toward
+  // today (setDay clamps at today).
+  (function attachSwipe() {
+    var root = document.getElementById("today-root");
+    if (!root) return;
+    var startX = null, startY = null, tracking = false;
+    root.addEventListener("touchstart", function (e) {
+      if (!e.touches || e.touches.length !== 1) { tracking = false; return; }
+      startX = e.touches[0].clientX; startY = e.touches[0].clientY; tracking = true;
+    }, { passive: true });
+    root.addEventListener("touchend", function (e) {
+      if (!tracking) return;
+      tracking = false;
+      var t = e.changedTouches && e.changedTouches[0];
+      if (!t) return;
+      var dx = t.clientX - startX;
+      var dy = t.clientY - startY;
+      // Clearly horizontal only: long enough and at least twice as wide as tall.
+      if (Math.abs(dx) <= 60 || Math.abs(dx) <= 2 * Math.abs(dy)) return;
+      if (dx > 0) setDay(dateOffset - 1); else setDay(dateOffset + 1);
+    }, { passive: true });
+    root.addEventListener("touchcancel", function () { tracking = false; }, { passive: true });
+  })();
 
   return {
     init: init,
