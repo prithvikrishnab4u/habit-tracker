@@ -105,11 +105,17 @@
   font-family: var(--font-text); font-size: 15px; font-weight: 600; color: var(--me-ink);
   padding: 4px 8px;
 }
-.bl-starters .bl-fullwhat { white-space: normal; }
+.bl-starterrow {
+  flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px;
+  border: 0; background: none; padding: 0; text-align: left; cursor: pointer;
+  font-family: var(--font-text); color: var(--ink);
+}
+.bl-starterwhat { font-size: 15px; font-weight: 500; color: var(--ink); }
 .bl-startermeta {
-  display: block; margin-top: 2px; font-size: 13px; color: var(--ink-60);
+  display: block; max-width: 100%; font-size: 13px; color: var(--ink-60);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+.bl-starters { max-height: 50vh; }
 .bl-take { color: var(--me-ink); }
 .bl-take:disabled { color: var(--ink-30); cursor: default; }
 .bl-emptybtn { margin-top: 14px; }
@@ -128,7 +134,7 @@
   font-size: 15px; line-height: 20px; color: var(--ink);
 }
 .bl-list-o li, .bl-list-u li { margin: 2px 0; overflow-wrap: anywhere; }
-.bl-link { color: var(--me-ink); word-break: break-all; }
+.bl-link { color: var(--me-ink); font-weight: 600; overflow-wrap: anywhere; }
 .bl-nohow { margin: -6px 0 0; font-size: 15px; color: var(--ink-60); }
 .bl-steps { display: flex; flex-direction: column; }
 .bl-step {
