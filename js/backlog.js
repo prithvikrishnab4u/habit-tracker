@@ -17,9 +17,9 @@
      thinking. Start shows all of it with a step checklist.
    - "Just pick one for me": one idea, no choosing. Rotates categories and
      prefers ideas that have steps.
-   - v2 Phase F: ready-made ideas come from starters.js. When your own
-     list has nothing that fits, Just pick one offers a ready-made idea,
-     and Start adds it to your list and starts the clock. */
+   - v2 Phase F: ready-made ideas come from starters.js. Just pick one
+     mixes them with your own ideas, and Start on a ready-made idea adds
+     it to your list and starts the clock. */
 
 var Backlog = (function () {
   var SIZES = [15, 30, 60, 120];
@@ -679,40 +679,44 @@ var Backlog = (function () {
   // Fits the chosen time (any size when none is chosen), skips Not now,
   // avoids the category picked last time, prefers ideas with steps, then
   // the oldest.
-  // Your own ideas first. When none fits, a ready-made one you don't have.
+  // Mixes your own ideas with ready-made ones you don't have yet. Both
+  // rotate away from the last category. Your own ideas win 6 times in 10
+  // (you chose them), taking ideas with steps first, then the oldest. A
+  // ready-made pick is random, so it isn't always the first in the library.
+  var OWN_SHARE = 0.6;
+
   function pickOne() {
     var gap = gapState.gap || SIZES[SIZES.length - 1];
     var skip = skipped();
     var last = lsGet(LS_PICK);
-    var pool = items().filter(function (it) { return it.size <= gap && skip.indexOf(it.id) < 0; });
-    if (!pool.length) {
-      var ready = Starters.list.filter(function (st) {
-        return st.size <= gap && !haveStarter(st) && skip.indexOf(Starters.key(st)) < 0;
+    var own = items().filter(function (it) { return it.size <= gap && skip.indexOf(it.id) < 0; });
+    var ready = Starters.list.filter(function (st) {
+      return st.size <= gap && !haveStarter(st) && skip.indexOf(Starters.key(st)) < 0;
+    });
+    if (!own.length && !ready.length) {
+      showToast(gapState.gap ? "Nothing else fits " + sizeLabel(gap) + " today. Try more time." :
+        "You have passed on everything today.");
+      return;
+    }
+    function notLast(x) { return !x.tag || x.tag !== last; }
+    var ownFresh = own.filter(notLast), readyFresh = ready.filter(notLast);
+    if (ownFresh.length || readyFresh.length) { own = ownFresh; ready = readyFresh; }
+
+    var useOwn = own.length && (!ready.length || Math.random() < OWN_SHARE);
+    if (useOwn) {
+      own.sort(function (a, b) {
+        var ya = isReady(a) ? 0 : 1, yb = isReady(b) ? 0 : 1;
+        if (ya !== yb) return ya - yb;
+        if (a.added !== b.added) return a.added < b.added ? -1 : 1;
+        return 0;
       });
-      if (!ready.length) {
-        showToast(gapState.gap ? "Nothing else fits " + sizeLabel(gap) + " today. Try more time." :
-          "You have passed on everything today.");
-        return;
-      }
-      // Rotate away from the last category, then a random one, so it isn't
-      // always the first idea in the library.
-      var fresh = ready.filter(function (st) { return st.tag !== last; });
-      if (fresh.length) ready = fresh;
+      lsSet(LS_PICK, own[0].tag || null);
+      openIdeaSheet(own[0].id, "pick");
+    } else {
       var st = ready[Math.floor(Math.random() * ready.length)];
       lsSet(LS_PICK, st.tag);
       openStarterIdea(st, "pick");
-      return;
     }
-    pool.sort(function (a, b) {
-      var ra = a.tag && a.tag === last ? 1 : 0, rb = b.tag && b.tag === last ? 1 : 0;
-      if (ra !== rb) return ra - rb;
-      var ya = isReady(a) ? 0 : 1, yb = isReady(b) ? 0 : 1;
-      if (ya !== yb) return ya - yb;
-      if (a.added !== b.added) return a.added < b.added ? -1 : 1;
-      return 0;
-    });
-    lsSet(LS_PICK, pool[0].tag || null);
-    openIdeaSheet(pool[0].id, "pick");
   }
 
   function pickLabel() {
