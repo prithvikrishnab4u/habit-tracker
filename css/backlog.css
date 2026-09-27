@@ -1,4 +1,5 @@
-/* Free time tab (Backlog) and the "Got a gap?" picker. */
+/* Free time tab (Backlog), the "I have free time" picker, the time block
+   countdown and the idea sheet. */
 
 /* ---------- Header ---------- */
 #backlog-root { display: flex; flex-direction: column; gap: 16px; }
@@ -29,35 +30,29 @@
 }
 .bl-row {
   display: flex; align-items: center; gap: 10px;
-  padding: 12px 12px 12px 16px;
-  border-bottom: 0.5px solid var(--separator);
+  width: 100%; min-height: 60px;
+  padding: 12px 14px 12px 16px;
+  border: 0; border-bottom: 0.5px solid var(--separator);
+  background: transparent; text-align: left;
+  font-family: var(--font-text); color: var(--ink); cursor: pointer;
 }
+.bl-row:active { background: var(--surface-2); }
 .bl-row:last-child { border-bottom: none; }
 .bl-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
 .bl-what {
   font-size: 17px; font-weight: 500; color: var(--ink);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.bl-meta { display: flex; align-items: center; gap: 8px; }
+.bl-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .bl-sizechip {
   font-size: 13px; font-weight: 600; color: var(--me-ink);
   background: var(--me-tint); border-radius: var(--r-ctl); padding: 3px 8px;
   font-variant-numeric: tabular-nums;
 }
-.bl-tag {
-  height: 26px; padding: 0 10px; border-radius: var(--r-ctl);
-  border: 0; background: var(--surface-2);
-  font-size: 13px; font-weight: 600; color: var(--ink);
-  cursor: pointer; font-family: var(--font-text);
-}
-.bl-tag.none { color: var(--ink-60); }
-.bl-del {
-  width: 32px; height: 32px; border-radius: 999px; flex: none;
-  border: 0; background: transparent; color: var(--ink-30);
-  cursor: pointer; display: flex; align-items: center; justify-content: center;
-}
-.bl-del svg { width: 12px; height: 12px; }
-.bl-del:active { transform: scale(0.9); color: var(--destructive); }
+.bl-tag { font-size: 13px; font-weight: 600; color: var(--ink); }
+.bl-tag.none { color: var(--ink-30); font-weight: 400; }
+.bl-stale { font-size: 13px; color: var(--ink-60); }
+.bl-chev { width: 8px; height: 14px; flex: none; color: var(--ink-30); }
 
 /* ---------- Add sheet ---------- */
 .bl-add { display: flex; flex-direction: column; gap: 14px; }
@@ -75,6 +70,15 @@
   cursor: pointer;
 }
 .bl-size.on { background: var(--me-tint); color: var(--me-ink); }
+.bl-label { font-size: 13px; font-weight: 600; color: var(--ink-60); margin-bottom: -6px; }
+.bl-cats { display: flex; gap: 8px; flex-wrap: wrap; }
+.bl-cat {
+  height: 36px; padding: 0 14px; border-radius: 999px;
+  border: 0; background: var(--surface-2);
+  font-family: var(--font-text); font-size: 15px; font-weight: 600; color: var(--ink-60);
+  cursor: pointer;
+}
+.bl-cat.on { background: var(--me-tint); color: var(--me-ink); }
 .bl-save { margin-top: 2px; }
 
 /* Full state: drop one first */
@@ -95,7 +99,55 @@
   cursor: pointer;
 }
 
-/* ---------- "Got a gap?" card, moved to the top of Free time ---------- */
+/* ---------- Idea sheet: Start, Done, Edit, Remove ---------- */
+.bl-actions { display: flex; flex-direction: column; gap: 10px; }
+.bl-act {
+  width: 100%; min-height: 48px; border-radius: 999px;
+  border: 0; background: var(--surface-2);
+  font-family: var(--font-text); font-size: 17px; font-weight: 600; color: var(--ink);
+  cursor: pointer;
+}
+.bl-act:active { transform: scale(0.97); }
+.bl-act-del { color: var(--destructive); }
+.bl-stalenote { margin: -6px 0 0; font-size: 15px; color: var(--ink); }
+
+/* ---------- Time block countdown ---------- */
+.bl-timer {
+  padding: 16px;
+  display: flex; flex-direction: column; gap: 6px;
+  box-shadow: inset 0 0 0 1.5px var(--me-ink);
+}
+.bl-timerlabel { font-size: 13px; font-weight: 600; color: var(--me-ink); }
+.bl-timerwhat { font-size: 17px; font-weight: 600; color: var(--ink); overflow-wrap: anywhere; }
+.bl-clock {
+  font-family: var(--font-num); font-size: 34px; line-height: 41px; font-weight: 700;
+  color: var(--ink); font-variant-numeric: tabular-nums;
+}
+.bl-timerq { margin: 0; font-size: 15px; color: var(--ink-60); }
+.bl-timerbtns { display: flex; gap: 10px; margin-top: 8px; }
+.bl-timerbtns .btn, .bl-timerbtns .bl-act { flex: 1; min-height: 48px; max-width: none; border-radius: 999px; }
+
+/* ---------- Done lately ---------- */
+.bl-done { padding: 0 16px; }
+.bl-done summary {
+  list-style: none; cursor: pointer;
+  padding: 14px 0; font-size: 15px; font-weight: 600; color: var(--ink-60);
+}
+.bl-done summary::-webkit-details-marker { display: none; }
+.bl-done summary::after { content: " +"; }
+.bl-done[open] summary::after { content: " −"; }
+.bl-donerow {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 0; border-top: 0.5px solid var(--separator);
+}
+.bl-donerow:last-child { margin-bottom: 4px; }
+.bl-donewhat {
+  flex: 1; min-width: 0; font-size: 15px; color: var(--ink);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.bl-donewhen { font-size: 13px; color: var(--ink-60); flex: none; }
+
+/* ---------- "I have free time" card, top of Free time ---------- */
 .gap-card {
   padding: 16px;
   display: flex; flex-direction: column; gap: 12px;
@@ -130,7 +182,21 @@
   flex: 1; min-width: 0; font-size: 15px; font-weight: 500; color: var(--ink);
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.gap-pick.sel { box-shadow: inset 0 0 0 1.5px var(--me-ink); }
+.gap-pick:active { transform: scale(0.98); }
+.gap-picktag { font-size: 13px; color: var(--ink-60); flex: none; }
+.gap-pair { margin: 2px 0 0; font-size: 13px; line-height: 18px; color: var(--ink-60); }
+.gap-pairlink {
+  border: 0; background: none; padding: 0; cursor: pointer;
+  font-family: var(--font-text); font-size: 13px; font-weight: 600; color: var(--me-ink);
+  text-align: left;
+}
+.gap-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.gap-btn {
+  height: 36px; padding: 0 16px; border-radius: 999px;
+  border: 0; background: var(--surface-2);
+  font-family: var(--font-text); font-size: 13px; font-weight: 600; color: var(--me-ink);
+  cursor: pointer;
+}
 .gap-shuffle {
   align-self: flex-start; height: 36px; padding: 0 16px; border-radius: 999px;
   border: 0; background: var(--surface-2);
