@@ -1191,7 +1191,9 @@ var Today = (function () {
       '<div class="tile-grid">' + tilesHTML(habitList, dateStr, me, partner) +
       '<button class="tile-add js-add-habit" aria-label="Add a habit">' +
       icon("plus") + "<span>Add habit</span></button>" +
-      "</div>";
+      "</div>" +
+      // Stage 2: bridge to Free time, only on the real today.
+      (dateOffset === 0 && window.Backlog ? Backlog.bridgeHTML() : "");
 
     root.querySelectorAll(".dnav").forEach(function (b) {
       b.addEventListener("click", function () { setDay(dateOffset + Number(b.dataset.nav)); });
@@ -1219,6 +1221,9 @@ var Today = (function () {
 
     var nudgeStripBtn = document.getElementById("nudge-btn-strip");
     if (nudgeStripBtn) nudgeStripBtn.addEventListener("click", nudge);
+
+    var bridge = document.getElementById("today-bridge");
+    if (bridge) bridge.addEventListener("click", function () { Backlog.bridgeTap(); });
 
     var addBtn = root.querySelector(".js-add-habit");
     if (addBtn) addBtn.addEventListener("click", function () {
