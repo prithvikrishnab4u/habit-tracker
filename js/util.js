@@ -104,7 +104,13 @@ var ICON_PATHS = {
   flame: '<path d="M12 3.5c.9 3.4 5 5.3 5 9.8a5 5 0 0 1-10 0c0-2.4 1.3-3.9 2.4-5 .3 1.6.9 2.5 2 3 .5-2.9-.4-5.3.6-7.8z"/>',
   trophy: '<path d="M8 4h8v5a4 4 0 0 1-8 0zM8 6H5v1.5A2.5 2.5 0 0 0 7.5 10H8M16 6h3v1.5A2.5 2.5 0 0 1 16.5 10H16M12 13v3.5M8.5 20h7M10 16.5h4V20h-4z"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
-  clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>'
+  clock: '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>',
+  check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  edit: '<path d="M4.5 19.5l1-4.2L15.8 5a2 2 0 0 1 2.9 0l.3.3a2 2 0 0 1 0 2.9L8.7 18.5z"/><path d="M13.5 7.3l3.2 3.2"/>',
+  trash: '<path d="M4.5 7h15M9.5 7V5a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v2M6.5 7l1 12a1.5 1.5 0 0 0 1.5 1.4h6a1.5 1.5 0 0 0 1.5-1.4l1-12"/>',
+  skip: '<path d="M5 6l7 6-7 6M13 6l7 6-7 6"/>',
+  chev: '<path d="M9 5l7 7-7 7"/>',
+  bookmark: '<path d="M7 4h10a1 1 0 0 1 1 1v15l-6-4-6 4V5a1 1 0 0 1 1-1z"/>'
 };
 
 function icon(name, cls) {
