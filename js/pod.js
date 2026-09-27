@@ -142,9 +142,6 @@ var Pod = (function () {
       var syncedDays = monthSynced(me, partner);
       var elapsed = t.getDate();
 
-      var streakChip = streak > 0
-        ? streak + "-day streak"
-        : "No streak yet";
 
       // ----- calendar month -----
       var y = t.getFullYear(), m = t.getMonth();
@@ -196,7 +193,7 @@ var Pod = (function () {
             "</div>";
         }
         return '<div class="streak-row" data-habit="' + esc(h.id) + '">' +
-          '<p class="sr-name">' + esc(h.name) + "</p>" +
+          '<p class="sr-name">' + iconWell(habitIconName(h), "sm") + "<span>" + esc(h.name) + "</span></p>" +
           row(me, a, "--person") + row(partner, b, "--partner") +
           "</div>";
       }).join("");
@@ -204,15 +201,20 @@ var Pod = (function () {
       root.innerHTML =
         '<div class="sync-head"><h1>Together</h1>' +
         '<p class="sync-sub">' + esc(monthName) + "</p></div>" +
+        // Stage 2: ring for days in sync, two labelled stats beside it.
         '<div class="sync-hero glass">' +
-        '<div class="sync-hero-main">' +
-        '<div><p class="hero-label">Days in sync</p>' +
-        '<p class="hero-num num">' + syncedDays + "</p>" +
-        '<p class="hero-sub">of ' + elapsed + " days this month</p></div>" +
-        '<div class="sync-hero-chips">' +
-        '<span class="hero-chip">' + esc(streakChip) + "</span>" +
-        '<span class="hero-chip">Best this month ' + best + "</span>" +
-        "</div>" +
+        '<div class="hero-ring" style="--ring:' + Math.round(syncedDays / Math.max(elapsed, 1) * 100) + '" role="img" aria-label="' +
+        syncedDays + " of " + elapsed + ' days in sync this month">' +
+        '<span class="hero-ring-in"><span class="hero-num num">' + syncedDays + "</span>" +
+        '<span class="hero-of">of ' + elapsed + "</span></span></div>" +
+        '<div class="hero-stats">' +
+        '<p class="hero-label">Days in sync</p>' +
+        '<div class="hero-stat">' + iconWell("flame", "sm") + '<span><span class="hs-val num">' +
+        (streak > 0 ? streak + (streak === 1 ? " day" : " days") : "None yet") + "</span>" +
+        '<span class="hs-cap">Current streak</span></span></div>' +
+        '<div class="hero-stat">' + iconWell("trophy", "sm") + '<span><span class="hs-val num">' +
+        best + (best === 1 ? " day" : " days") + "</span>" +
+        '<span class="hs-cap">Best this month</span></span></div>' +
         "</div>" +
         "</div>" +
         '<div class="cal-card glass" role="group" aria-label="' + esc(monthName) + ' calendar">' +
