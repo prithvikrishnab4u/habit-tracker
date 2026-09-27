@@ -282,6 +282,29 @@
 .tile-add .ic { width: 22px; height: 22px; }
 .tile-add:active { transform: scale(0.97); }
 
+/* Bridge to Free time (Stage 2): one tap to something to do. */
+.today-bridge {
+  display: flex; align-items: center; gap: 14px;
+  width: 100%; padding: 14px 16px;
+  border: 0; border-radius: var(--r-card);
+  background: var(--surface);
+  text-align: left; cursor: pointer;
+  font-family: var(--font-text); color: var(--ink);
+  transition: transform 100ms var(--ease);
+}
+.today-bridge:active { transform: scale(0.98); }
+.tb-icon {
+  width: 40px; height: 40px; flex: none; border-radius: 12px;
+  background: var(--me-tint); color: var(--me-ink);
+  display: flex; align-items: center; justify-content: center;
+}
+.tb-icon .ic { width: 22px; height: 22px; }
+.today-bridge.running .tb-icon { background: var(--person); color: #fff; }
+.tb-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.tb-title { font-size: 17px; line-height: 22px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tb-sub { font-size: 13px; line-height: 18px; color: var(--ink-60); }
+.tb-chev { width: 16px; height: 16px; color: var(--ink-30); }
+
 /* ---------- Meal logging sheet ---------- */
 .meal-form { display: flex; flex-direction: column; gap: 12px; padding: 4px 0 8px; }
 .meal-label { font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink-60); margin-top: 4px; }
@@ -318,6 +341,6 @@
 /* ---------- Reduced motion ---------- */
 @media (prefers-reduced-motion: reduce) {
   .strip-ring, .strip-fill, .t-bar i, .check-circle, .sync-drop { transition: none; }
-  .tile, .tile-add, .tile .ic-well { transition: none; }
+  .tile, .tile-add, .tile .ic-well, .today-bridge { transition: none; }
   .tile.pressing, .tile-add:active, .meal-chip:active { transform: none; }
 }
