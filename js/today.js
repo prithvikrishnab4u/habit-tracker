@@ -109,6 +109,7 @@ var Today = (function () {
   function paintBar(tileEl, frac) {
     var b = tileEl.querySelector(".js-bar");
     if (b) b.style.width = Math.round(Math.min(frac, 1) * 100) + "%";
+    tileEl.style.setProperty("--fill", Math.round(Math.max(0, Math.min(frac, 1)) * 100));
     tileEl.classList.toggle("met", frac >= 1);
   }
 
@@ -285,21 +286,22 @@ var Today = (function () {
     if (meDone && pDone) return { top: "In sync", line: "Both done. That is a sync day.", showNudge: false };
     if (pDone) return { top: "Meet in the middle", line: pName + " is done. Your move.", showNudge: false };
     if (meDone) return { top: "Meet in the middle", line: "You are done. " + pName + " is not yet.", showNudge: true };
-    return { top: "Meet in the middle", line: "Meet in the middle.", showNudge: true };
+    return { top: "Meet in the middle", line: "Neither of you is done yet.", showNudge: true };
   }
 
-  // 36px avatar inside a conic-gradient progress ring in the person's color.
-  function ringAvatarHTML(personId, frac, who) {
+  // Stage 3 hero: twin rings. You are the outer ring, your partner the
+  // inner one; both close as the day fills and turn --sync together when
+  // the day is in sync. Beside them: the status, a legend with each
+  // person's %, and the Nudge.
+  function legendHTML(personId, frac, who) {
     var pct = Math.round(frac * 100);
-    var name = Store.personName(personId) || "?";
+    var name = who === "me" ? "You" : (Store.personName(personId) || "?");
     return '<span class="strip-person" data-who="' + who + '">' +
-      '<span class="strip-ring js-ring" style="--c:' + Store.personColor(personId) + ";--p:" + pct + '" aria-hidden="true">' +
-      '<span class="strip-initial">' + esc(name.charAt(0).toUpperCase()) + "</span></span>" +
+      '<i class="lg-dot" aria-hidden="true"></i>' +
+      '<span class="lg-name">' + esc(name) + "</span>" +
       '<span class="strip-pct num js-pct" aria-label="' + esc(name) + ": " + pct + '%">' + pct + "%</span></span>";
   }
 
-  // v2 Phase A strip, Calm glass: rings, percentages, center-meeting bar,
-  // status line with the Nudge on the right. Not tappable.
   function syncStripHTML(dateStr, me, partner) {
     var myFrac = dayFraction(dateStr, me);
     var pFrac = partner ? dayFraction(dateStr, partner) : 0;
@@ -308,32 +310,35 @@ var Today = (function () {
     return '<section class="sync-strip' + (synced ? " synced" : "") + '" id="sync-strip"' +
       ' style="--you:' + Store.personColor(me) + ";--them:" + (partner ? Store.personColor(partner) : "transparent") + '"' +
       ' aria-label="Together today">' +
-      '<div class="strip-row">' +
-      ringAvatarHTML(me, myFrac, "me") +
-      '<span class="strip-bar" role="img" aria-label="Progress toward the middle">' +
-      '<span class="strip-fill strip-fill-me" style="width:' + (myFrac * 50) + '%"></span>' +
-      '<span class="strip-fill strip-fill-partner" style="width:' + (pFrac * 50) + '%"></span>' +
-      '<span class="strip-mid"></span></span>' +
-      (partner ? ringAvatarHTML(partner, pFrac, "partner") : "") +
+      '<div class="twin" role="img" aria-label="Your day ' + Math.round(myFrac * 100) + "%" +
+      (partner ? ", " + esc(Store.personName(partner)) + " " + Math.round(pFrac * 100) + "%" : "") + '">' +
+      '<span class="twin-ring twin-me js-ring-me" style="--p:' + Math.round(myFrac * 100) + '"></span>' +
+      (partner ? '<span class="twin-ring twin-them js-ring-them" style="--p:' + Math.round(pFrac * 100) + '"></span>' : "") +
+      '<span class="twin-core">' + icon("check") + "</span>" +
       "</div>" +
-      '<div class="strip-foot">' +
+      '<div class="twin-side">' +
+      '<span class="strip-top">' + esc(st.top) + "</span>" +
       '<span class="strip-status' + (synced ? " is-sync" : "") + '">' + esc(st.line) + "</span>" +
-      '<button class="nudge' + (st.showNudge ? "" : " hidden") + '" id="nudge-btn-strip">Nudge</button>' +
+      '<span class="strip-legend">' + legendHTML(me, myFrac, "me") +
+      (partner ? legendHTML(partner, pFrac, "partner") : "") + "</span>" +
+      '<button class="nudge' + (st.showNudge ? "" : " hidden") + '" id="nudge-btn-strip">' + "Nudge " +
+      esc(partner ? Store.personName(partner) : "") + "</button>" +
       "</div></section>";
   }
 
   function paintRing(strip, who, frac) {
+    var pct = Math.round(frac * 100);
+    var ring = strip.querySelector(who === "me" ? ".js-ring-me" : ".js-ring-them");
+    if (ring) ring.style.setProperty("--p", pct);
     var wrap = strip.querySelector('.strip-person[data-who="' + who + '"]');
     if (!wrap) return;
-    var pct = Math.round(frac * 100);
-    wrap.querySelector(".js-ring").style.setProperty("--p", pct);
     var pctEl = wrap.querySelector(".js-pct");
     pctEl.textContent = pct + "%";
     var label = pctEl.getAttribute("aria-label") || "";
     pctEl.setAttribute("aria-label", label.replace(/\d+%$/, pct + "%"));
   }
 
-  // Repaint the sync strip in place so ring and bar transitions play.
+  // Repaint the hero in place so the rings animate.
   function paintStrip(dateStr, me, partner) {
     var strip = document.getElementById("sync-strip");
     if (!strip) return;
@@ -344,8 +349,7 @@ var Today = (function () {
     strip.classList.toggle("synced", synced);
     paintRing(strip, "me", myFrac);
     if (partner) paintRing(strip, "partner", pFrac);
-    strip.querySelector(".strip-fill-me").style.width = (myFrac * 50) + "%";
-    strip.querySelector(".strip-fill-partner").style.width = (pFrac * 50) + "%";
+    strip.querySelector(".strip-top").textContent = st.top;
     var statusEl = strip.querySelector(".strip-status");
     statusEl.textContent = st.line;
     statusEl.classList.toggle("is-sync", synced);
@@ -1097,21 +1101,29 @@ var Today = (function () {
   }
 
   /* ----- header ----- */
-  // 34px title with the gear on the right; the date line under it doubles
-  // as the compact day navigator (‹ date ›).
+  // Stage 3 ("Fill the day, together"): the date is a small line on top,
+  // with the day navigator; the title greets you by the time of day. Past
+  // days keep a plain title (Yesterday, Friday).
+  function greeting() {
+    var h = new Date().getHours();
+    var part = h < 5 ? "Still up" : h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : h < 22 ? "Good evening" : "Good night";
+    var name = Store.personName(Store.get("person")) || "";
+    return part + (name ? ", " + name : "");
+  }
+
   function headerHTML(dateStr) {
     var past = dateStr !== localDate();
-    var title = past ? dateLabel() : "Today";
+    var title = past ? dateLabel() : greeting();
     return '<header class="today-head">' +
       '<div class="today-titlerow">' +
-      '<h1 class="screen-title">' + esc(title) + "</h1>" +
-      '<button class="gear-btn" id="today-gear" aria-label="Habits and settings">' + ICONS.gear + "</button>" +
-      "</div>" +
       '<div class="date-nav">' +
       '<button class="dnav" data-nav="-1" aria-label="Previous day"' + (dateOffset <= -MAX_BACK ? " disabled" : "") + ">&#8249;</button>" +
-      '<span class="screen-sub top-date">' + esc(fullDateLabel()) + "</span>" +
+      '<span class="top-date">' + esc(fullDateLabel()) + "</span>" +
       '<button class="dnav" data-nav="1" aria-label="Next day"' + (dateOffset >= 0 ? " disabled" : "") + ">&#8250;</button>" +
       "</div>" +
+      '<button class="gear-btn" id="today-gear" aria-label="Habits and settings">' + ICONS.gear + "</button>" +
+      "</div>" +
+      '<h1 class="today-greet">' + esc(title) + "</h1>" +
       (past ? '<button class="back-pill" id="back-today">Back to today</button>' : "") +
       "</header>";
   }
@@ -1188,6 +1200,7 @@ var Today = (function () {
     root.innerHTML =
       headerHTML(dateStr) +
       syncStripHTML(dateStr, me, partner) +
+      '<p class="section-label">Habits</p>' +
       '<div class="tile-grid">' + tilesHTML(habitList, dateStr, me, partner) +
       '<button class="tile-add js-add-habit" aria-label="Add a habit">' +
       icon("plus") + "<span>Add habit</span></button>" +
@@ -1207,8 +1220,13 @@ var Today = (function () {
     });
 
     root.querySelectorAll(".tile").forEach(function (el) {
+      // Stage 3: tiles fill from the bottom like a glass (--fill, 0-100).
       var bar = el.querySelector(".js-bar");
-      if (bar) el.classList.toggle("met", bar.style.width === "100%");
+      if (bar) {
+        var w = parseInt(bar.style.width, 10) || 0;
+        el.style.setProperty("--fill", w);
+        el.classList.toggle("met", w >= 100);
+      }
       var habit = habitList.filter(function (h) { return h.id === el.dataset.habit; })[0];
       if (habit) bindTile(el, habit);
     });
