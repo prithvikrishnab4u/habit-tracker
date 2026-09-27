@@ -163,6 +163,7 @@
       if (!document.hidden && Store.isSetup() && navigator.onLine) {
         // Drop cached check-ins so the partner's latest entries come through.
         Data.invalidateAll();
+        Backlog.invalidate();
         Store.load().then(function () {
           if (!document.getElementById("screen-today").classList.contains("hidden")) Today.render();
           if (!document.getElementById("screen-pod").classList.contains("hidden")) Pod.render();
