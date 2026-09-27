@@ -109,6 +109,7 @@ var Today = (function () {
   function paintBar(tileEl, frac) {
     var b = tileEl.querySelector(".js-bar");
     if (b) b.style.width = Math.round(Math.min(frac, 1) * 100) + "%";
+    tileEl.classList.toggle("met", frac >= 1);
   }
 
   function fmtSteps(n) {
@@ -409,9 +410,11 @@ var Today = (function () {
   /* ----- tiles ----- */
   // Every tile: label (+ partner chip) on top, value, one caption, and a
   // 4px progress bar in --person along the bottom edge.
-  function tileTopHTML(name, partner, pText) {
-    return '<span class="t-top"><span class="t-label">' + esc(name) + "</span>" +
-      (partner ? chipHTML(partner, pText) : "") + "</span>";
+  // Stage 2: icon top-left, partner chip top-right, name on its own line.
+  function tileTopHTML(name, partner, pText, iconName) {
+    return '<span class="t-top">' + iconWell(iconName || "habit", "sm") +
+      (partner ? chipHTML(partner, pText) : "") + "</span>" +
+      '<span class="t-label">' + esc(name) + "</span>";
   }
 
   function waterLabel(habit, val, me, partner) {
@@ -431,7 +434,7 @@ var Today = (function () {
     var pVal = partner ? Data.value(dateStr, partner, habit.id) : undefined;
     var pText = (pVal === undefined || pVal === null) ? "not yet" : pVal + "/" + habit.targets[partner];
     return '<button class="tile tile-water" data-habit="water" aria-label="' + esc(waterLabel(habit, val, me, partner)) + '">' +
-      tileTopHTML("Water", partner, pText) +
+      tileTopHTML("Water", partner, pText, "water") +
       '<span class="t-main"><span class="t-num num js-wval">' + val + "</span>" +
       '<span class="t-cap">of ' + target + (target === 1 ? " glass" : " glasses") + "</span></span>" +
       barHTML(target ? val / target : 0) +
@@ -469,7 +472,7 @@ var Today = (function () {
     var dots = "";
     for (var i = 0; i < target; i++) dots += '<i class="x-dot' + (i < n ? " on" : "") + '"></i>';
     return '<button class="tile tile-ex" data-habit="exercise" aria-label="' + esc(exerciseLabel(habit, n, me, partner)) + '">' +
-      tileTopHTML("Exercise", partner, pn + "/" + habit.targets[partner]) +
+      tileTopHTML("Exercise", partner, pn + "/" + habit.targets[partner], "exercise") +
       '<span class="t-main"><span class="t-numrow"><span class="t-num num js-xval">' + n + "</span>" +
       '<span class="x-dots" aria-hidden="true">' + dots + "</span></span>" +
       '<span class="t-cap">of ' + target + " this week</span></span>" +
@@ -501,7 +504,7 @@ var Today = (function () {
     var pText = (pVal === undefined || pVal === null) ? "not yet" : fmtSteps(pVal);
     var progress = (val === undefined || val === null || !target) ? 0 : val / target;
     return '<button class="tile tile-steps" data-habit="steps" aria-label="' + esc(stepsLabel(habit, val, me, partner)) + '">' +
-      tileTopHTML("Steps", partner, pText) +
+      tileTopHTML("Steps", partner, pText, "steps") +
       '<span class="t-main"><span class="t-num num js-sval">' + fmtStepsFull(val) + "</span>" +
       '<span class="t-cap">of ' + Number(target).toLocaleString("en-US") + " steps</span></span>" +
       barHTML(progress) +
@@ -553,7 +556,7 @@ var Today = (function () {
     if (isCheck) {
       var cs = checkState(habit, val);
       return '<button class="tile tile-check' + (habit.inverted ? " tile-inverted" : "") + '" data-habit="' + esc(habit.id) + '" aria-label="' + esc(cs.label) + '">' +
-        tileTopHTML(habit.name, partner, pText) +
+        tileTopHTML(habit.name, partner, pText, habitIconName(habit)) +
         '<span class="t-main"><span class="check-circle js-gcheck' + (cs.done ? " on" : "") + '" aria-hidden="true">' + ICONS.badge + "</span>" +
         '<span class="t-cap js-gcap">' + cs.cap + "</span></span>" +
         barHTML(cs.done ? 1 : 0) +
@@ -564,7 +567,7 @@ var Today = (function () {
     var unit = habit.unit || "times";
     var clabel = habit.name + ": " + val + " of " + target + ". Tap to add one.";
     return '<button class="tile tile-generic" data-habit="' + esc(habit.id) + '" aria-label="' + esc(clabel) + '">' +
-      tileTopHTML(habit.name, partner, pText) +
+      tileTopHTML(habit.name, partner, pText, habitIconName(habit)) +
       '<span class="t-main"><span class="t-num num js-gval">' + val + "</span>" +
       '<span class="t-cap">of ' + target + " " + esc(unit) + "</span></span>" +
       barHTML(val / target) +
@@ -660,10 +663,18 @@ var Today = (function () {
     var dotClass = "meal-dot-" + sig.dot;
     var line = sig.line + (sig.lateDinner ? " · late dinner" : "");
     return '<button class="tile tile-meals" data-habit="meals" aria-label="Meals. ' + esc(line) + '. Tap to log a meal.">' +
-      '<span class="t-top"><span class="t-label">Meals</span>' +
+      '<span class="t-top">' + iconWell("meals", "sm") +
       '<span class="meal-dot ' + dotClass + '" aria-hidden="true"></span></span>' +
-      '<span class="t-main"><span class="t-cap meal-signal">' + esc(line) + "</span></span>" +
+      '<span class="t-label">Meals</span>' +
+      '<span class="t-main"><span class="t-num num meal-num">' + meals.length + "</span>" +
+      '<span class="t-cap meal-signal">' + esc(mealCap(sig, meals.length)) + "</span></span>" +
       "</button>";
+  }
+
+  // Caption under the meal count: the day signal without repeating the count.
+  function mealCap(sig, n) {
+    if (n < 2) return n === 1 ? "meal so far" : "meals yet. Tap to log.";
+    return sig.line.replace(/^\d+ meals · /, "") + (sig.lateDinner ? " · late dinner" : "");
   }
 
   // v2 Phase B: Meal logging sheet
@@ -757,7 +768,8 @@ var Today = (function () {
           if (tile) {
             var sig = mealSignal(meals);
             var line = sig.line + (sig.lateDinner ? " · late dinner" : "");
-            tile.querySelector(".meal-signal").textContent = line;
+            tile.querySelector(".meal-signal").textContent = mealCap(sig, meals.length);
+            tile.querySelector(".meal-num").textContent = meals.length;
             tile.querySelector(".meal-dot").className = "meal-dot meal-dot-" + sig.dot;
             tile.setAttribute("aria-label", "Meals. " + line + ". Tap to log a meal.");
           }
@@ -1176,9 +1188,10 @@ var Today = (function () {
     root.innerHTML =
       headerHTML(dateStr) +
       syncStripHTML(dateStr, me, partner) +
-      '<div class="tile-grid">' + tilesHTML(habitList, dateStr, me, partner) + "</div>" +
-      '<button class="add-habit js-add-habit" aria-label="Add a habit">' +
-      ICONS.plus + "<span>Add Habit</span></button>";
+      '<div class="tile-grid">' + tilesHTML(habitList, dateStr, me, partner) +
+      '<button class="tile-add js-add-habit" aria-label="Add a habit">' +
+      icon("plus") + "<span>Add habit</span></button>" +
+      "</div>";
 
     root.querySelectorAll(".dnav").forEach(function (b) {
       b.addEventListener("click", function () { setDay(dateOffset + Number(b.dataset.nav)); });
@@ -1192,6 +1205,8 @@ var Today = (function () {
     });
 
     root.querySelectorAll(".tile").forEach(function (el) {
+      var bar = el.querySelector(".js-bar");
+      if (bar) el.classList.toggle("met", bar.style.width === "100%");
       var habit = habitList.filter(function (h) { return h.id === el.dataset.habit; })[0];
       if (habit) bindTile(el, habit);
     });
