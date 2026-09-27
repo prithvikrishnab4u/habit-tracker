@@ -582,11 +582,9 @@ var Backlog = (function () {
     var sheet = openSheet(st.what, sub,
       '<button class="btn" data-act="start">Start ' + sizeLabel(st.size) + "</button>" +
       detailsHTML(st, null) +
-      '<div class="bl-actions">' +
-      (added ? "" : '<button class="bl-act" data-act="add">Add to my list for later</button>') +
-      (mode === "pick" ? '<button class="bl-act" data-act="skip">Something else</button>' :
-        '<button class="bl-act" data-act="back">More ready-made ideas</button>') +
-      "</div>");
+      quickHTML((added ? [] : [{ act: "add", icon: "bookmark", label: "Save for later" }])
+        .concat(mode === "pick" ? [{ act: "skip", icon: "skip", label: "Another" }] :
+          [{ act: "back", icon: "Any", label: "More ideas" }])));
     sheet.el.querySelectorAll("[data-act]").forEach(function (b) {
       b.addEventListener("click", function () {
         var act = b.dataset.act;
@@ -606,6 +604,15 @@ var Backlog = (function () {
         }
       });
     });
+  }
+
+  // Stage 2: secondary actions as one row of icon buttons under Start.
+  // acts: [{ act, icon, label, del? }]
+  function quickHTML(acts) {
+    return '<div class="bl-quick">' + acts.map(function (a) {
+      return '<button class="bl-qbtn' + (a.del ? " del" : "") + '" data-act="' + a.act + '">' +
+        icon(a.icon) + "<span>" + esc(a.label) + "</span></button>";
+    }).join("") + "</div>";
   }
 
   /* ----- idea sheet: Start, Done, Edit, Remove ----- */
@@ -632,14 +639,12 @@ var Backlog = (function () {
       (running ? "" : '<button class="btn" data-act="start">Start ' + sizeLabel(it.size) + "</button>") +
       (isReady(it) ? detailsHTML(it, null) :
         '<p class="bl-nohow">No steps yet. Tap Edit and add a first step, so it is easy to start next time.</p>') +
-      '<div class="bl-actions">' +
-      '<button class="bl-act" data-act="done">Done</button>' +
-      (stale ? '<button class="bl-act" data-act="keep">Keep it</button>' : "") +
-      (mode === "pick" ? '<button class="bl-act" data-act="skip">Something else</button>' :
-        mode === "picker" ? '<button class="bl-act" data-act="skip">Not now</button>' : "") +
-      '<button class="bl-act" data-act="edit">Edit</button>' +
-      '<button class="bl-act bl-act-del" data-act="remove">Remove</button>' +
-      "</div>");
+      quickHTML([{ act: "done", icon: "check", label: "Done" }]
+        .concat(stale ? [{ act: "keep", icon: "bookmark", label: "Keep it" }] : [])
+        .concat(mode === "pick" ? [{ act: "skip", icon: "skip", label: "Another" }] :
+          mode === "picker" ? [{ act: "skip", icon: "skip", label: "Not now" }] : [])
+        .concat([{ act: "edit", icon: "edit", label: "Edit" },
+          { act: "remove", icon: "trash", label: "Remove", del: true }])));
     sheet.el.querySelectorAll("[data-act]").forEach(function (b) {
       b.addEventListener("click", function () {
         var act = b.dataset.act;
@@ -758,6 +763,12 @@ var Backlog = (function () {
     return t.start + t.size * 60000 - Date.now();
   }
 
+  // Share of the block already used, for the countdown ring.
+  function ringPct(t) {
+    var total = t.size * 60000;
+    return Math.max(0, Math.min(100, Math.round((Date.now() - t.start) / total * 100)));
+  }
+
   function clockText(ms) {
     var s = Math.max(0, Math.ceil(ms / 1000));
     var h = Math.floor(s / 3600);
@@ -786,9 +797,12 @@ var Backlog = (function () {
         "</section>";
     }
     return '<section class="bl-timer glass" aria-label="Time block">' +
-      '<div class="bl-timerlabel">Now</div>' +
-      '<div class="bl-timerwhat">' + esc(t.what) + "</div>" +
-      '<div class="bl-clock" id="bl-clock">' + clockText(left) + "</div>" +
+      '<div class="bl-timerhead">' +
+      '<div class="bl-tring" id="bl-tring" style="--ring:' + ringPct(t) + '">' +
+      '<span class="bl-clock" id="bl-clock">' + clockText(left) + "</span>" +
+      '<span class="bl-tleft">left</span></div>' +
+      '<div class="bl-timermeta"><div class="bl-timerlabel">Now</div>' +
+      '<div class="bl-timerwhat">' + esc(t.what) + "</div></div></div>" +
       (cur ? detailsHTML(cur, t.checked || []) : "") +
       '<div class="bl-timerbtns">' +
       '<button class="btn" id="bl-t-done">Done</button>' +
@@ -828,6 +842,8 @@ var Backlog = (function () {
       var left = remainingMs(now);
       if (left <= 0) { render(); return; }
       clock.textContent = clockText(left);
+      var ring = document.getElementById("bl-tring");
+      if (ring) ring.style.setProperty("--ring", ringPct(now));
     }, 1000);
   }
 
@@ -1044,14 +1060,61 @@ var Backlog = (function () {
     return ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][d.getMonth()] + " " + d.getDate();
   }
 
-  function doneHTML() {
-    var done = doneList().slice(0, 10);
-    if (!done.length) return "";
-    var rows = done.map(function (d) {
-      return '<div class="bl-donerow"><span class="bl-donewhat">' + esc(d.what) + "</span>" +
-        '<span class="bl-donewhen">' + doneDayLabel(d.doneOn) + "</span></div>";
+  // Stage 2: this week at a glance. A dot per day (filled when you
+  // finished something), the count and minutes, then the latest done items.
+  function weekHTML() {
+    var today = localDate();
+    var monday = mondayOf(today);
+    var done = doneList();
+    var n = 0, mins = 0;
+    var days = "";
+    for (var i = 0; i < 7; i++) {
+      var d = addDays(monday, i);
+      var dayDone = done.filter(function (x) { return x.doneOn === d; });
+      n += dayDone.length;
+      dayDone.forEach(function (x) { mins += x.size || 0; });
+      days += '<span class="bl-wday' + (d === today ? " today" : "") + (d > today ? " future" : "") + '">' +
+        '<span class="bl-wl">' + "MTWTFSS".charAt(i) + "</span>" +
+        '<span class="bl-wdot' + (dayDone.length ? " on" : "") + '">' +
+        (dayDone.length > 1 ? dayDone.length : "") + "</span></span>";
+    }
+    var sum = n ? n + " done · " + durLabel(mins) : "Nothing done yet. One small thing counts.";
+    var recent = done.slice(0, 5).map(function (x) {
+      return '<div class="bl-donerow">' + iconWell(x.tag || "none", "sm") +
+        '<span class="bl-donewhat">' + esc(x.what) + "</span>" +
+        '<span class="bl-donewhen">' + doneDayLabel(x.doneOn) + "</span></div>";
     }).join("");
-    return '<details class="bl-done glass"><summary>Done lately</summary>' + rows + "</details>";
+    return '<p class="section-label">This week</p>' +
+      '<section class="bl-week glass">' +
+      '<div class="bl-wsum">' + esc(sum) + "</div>" +
+      '<div class="bl-wdays">' + days + "</div>" +
+      (recent ? '<div class="bl-wrecent">' + recent + "</div>" : "") +
+      "</section>";
+  }
+
+  /* ----- Today bridge: one tap from Today to something to do ----- */
+
+  function bridgeHTML() {
+    var t = lsGet(LS_TIMER);
+    if (t) {
+      var left = remainingMs(t);
+      var sub = left > 0 ? Math.ceil(left / 60000) + " min left" : "Time's up. Did you get to it?";
+      return '<button class="today-bridge running" id="today-bridge">' +
+        '<span class="tb-icon">' + icon("clock") + "</span>" +
+        '<span class="tb-text"><span class="tb-title">' + esc(t.what) + "</span>" +
+        '<span class="tb-sub">' + esc(sub) + "</span></span>" + icon("chev", "tb-chev") + "</button>";
+    }
+    return '<button class="today-bridge" id="today-bridge">' +
+      '<span class="tb-icon">' + icon("dice") + "</span>" +
+      '<span class="tb-text"><span class="tb-title">Got a few minutes?</span>' +
+      '<span class="tb-sub">One thing to do, ready to start</span></span>' + icon("chev", "tb-chev") + "</button>";
+  }
+
+  function bridgeTap() {
+    var running = !!lsGet(LS_TIMER);
+    if (window.App) App.showTab("backlog");
+    if (running) return;
+    load().then(function () { setTimeout(pickOne, 150); }, function () {});
   }
 
   function render() {
@@ -1062,8 +1125,6 @@ var Backlog = (function () {
     load().then(function (list) {
       if (token !== render._t) return;
       var sub = list.length + (list.length === 1 ? " idea saved" : " ideas saved");
-      var wk = doneThisWeek();
-      if (wk) sub += " · " + wk + " done this week";
       var head = '<div class="bl-head">' +
         '<div><h1 class="screen-title">Free time</h1>' +
         '<p class="screen-sub">' + sub + "</p></div>" +
@@ -1077,7 +1138,6 @@ var Backlog = (function () {
         body = '<p class="section-label">Your ideas</p>' +
           '<div class="bl-list glass">' + list.map(rowHTML).join("") + "</div>";
       }
-      var open = root.querySelector(".bl-done[open]") !== null;
       var timerHTML = timerCardHTML();
       var pickHTMLBtn = timerHTML ? "" :
         '<button class="bl-pickone" id="bl-pickone">' +
@@ -1086,8 +1146,7 @@ var Backlog = (function () {
         '<span class="bl-picksub" id="bl-picksub">' + pickSub() + "</span></span>" +
         '<svg class="bl-pickchev" viewBox="0 0 8 14" aria-hidden="true"><path d="M1 1l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
         "</button>";
-      root.innerHTML = head + timerHTML + pickHTMLBtn + gapCardHTML() + body + doneHTML();
-      if (open && root.querySelector(".bl-done")) root.querySelector(".bl-done").open = true;
+      root.innerHTML = head + timerHTML + pickHTMLBtn + gapCardHTML() + body + weekHTML();
 
       document.getElementById("bl-add").addEventListener("click", function () { openEditSheet(); });
       var pk = document.getElementById("bl-pickone");
@@ -1118,6 +1177,8 @@ var Backlog = (function () {
     count: count,
     sizeLabel: sizeLabel,
     openAddSheet: function () { openEditSheet(); },
+    bridgeHTML: bridgeHTML,
+    bridgeTap: bridgeTap,
     TAGS: TAGS,
     SIZES: SIZES,
     CAP: CAP
