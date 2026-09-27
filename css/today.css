@@ -169,11 +169,11 @@
   border: 0;
   border-radius: var(--r-card);
   background: var(--surface);
-  padding: 16px 16px 28px;
+  padding: 14px 16px 28px;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
-  gap: 8px;
+  justify-content: flex-start;
+  gap: 4px;
   text-align: left;
   color: var(--ink);
   font-family: var(--font-text);
@@ -184,15 +184,18 @@
   -webkit-user-select: none;
 }
 .tile.pressing { transform: scale(0.97); }
+/* Goal met: the icon fills with your color. */
+.tile .ic-well { transition: background-color 250ms var(--ease), color 250ms var(--ease); }
+.tile.met .ic-well { background: var(--person); color: #fff; }
 .tile:focus-visible { outline: 2px solid var(--person); outline-offset: 2px; }
 
-.t-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; }
+.t-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; margin-bottom: 8px; }
 .t-label {
-  font-size: 15px; line-height: 20px; font-weight: 600;
+  font-size: 15px; line-height: 20px; font-weight: 600; color: var(--ink-60);
   min-width: 0;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
-.t-main { display: flex; flex-direction: column; gap: 2px; }
+.t-main { display: flex; flex-direction: column; gap: 2px; margin-top: auto; }
 .t-numrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .t-num {
   font-family: var(--font-num);
@@ -261,23 +264,23 @@
 .meal-dot-amber { background: #FF9F0A; }
 .meal-dot-grey { background: var(--ink-30); }
 
-/* Add habit */
-.add-habit {
-  height: 52px;
-  border: 0;
-  border-radius: 999px;
-  background: var(--surface);
-  display: flex; align-items: center; justify-content: center;
-  gap: 8px;
+/* Add habit: a dashed empty tile at the end of the grid. */
+.tile-add {
+  min-height: 128px;
+  border: 1.5px dashed var(--separator);
+  border-radius: var(--r-card);
+  background: transparent;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 6px;
   font-family: var(--font-text);
-  font-size: 17px;
+  font-size: 15px;
   font-weight: 600;
-  color: var(--me-ink);
+  color: var(--ink-60);
   cursor: pointer;
   transition: transform 100ms var(--ease);
 }
-.add-habit svg { width: 18px; height: 18px; }
-.add-habit:active { transform: scale(0.97); }
+.tile-add .ic { width: 22px; height: 22px; }
+.tile-add:active { transform: scale(0.97); }
 
 /* ---------- Meal logging sheet ---------- */
 .meal-form { display: flex; flex-direction: column; gap: 12px; padding: 4px 0 8px; }
@@ -315,6 +318,6 @@
 /* ---------- Reduced motion ---------- */
 @media (prefers-reduced-motion: reduce) {
   .strip-ring, .strip-fill, .t-bar i, .check-circle, .sync-drop { transition: none; }
-  .tile, .add-habit { transition: none; }
-  .tile.pressing, .add-habit:active, .meal-chip:active { transform: none; }
+  .tile, .tile-add, .tile .ic-well { transition: none; }
+  .tile.pressing, .tile-add:active, .meal-chip:active { transform: none; }
 }
