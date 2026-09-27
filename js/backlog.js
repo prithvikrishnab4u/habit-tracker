@@ -397,11 +397,11 @@ var Backlog = (function () {
     if (TAGS.indexOf(tag) < 0) tag = null;
 
     var sizeBtns = SIZES.map(function (s) {
-      return '<button class="bl-size' + (s === size ? " on" : "") + '" data-size="' + s + '">' +
+      return '<button class="bl-size' + (s === size ? " on" : "") + '" data-size="' + s + '" role="radio">' +
         sizeLabel(s) + "</button>";
     }).join("");
     var tagBtns = TAGS.map(function (t) {
-      return '<button class="bl-cat' + (t === tag ? " on" : "") + '" data-tag="' + t + '">' + t + "</button>";
+      return '<button class="fchip bl-cat' + (t === tag ? " on" : "") + '" data-tag="' + t + '">' + icon(t) + t + "</button>";
     }).join("");
 
     var sheet = openSheet(editing ? "Edit idea" : "Add an idea",
@@ -409,7 +409,7 @@ var Backlog = (function () {
       '<div class="bl-add">' +
       '<input id="bl-what" class="bl-input" type="text" maxlength="80" placeholder="What would you do with a free hour?" autocomplete="off">' +
       '<div class="bl-label">How long</div>' +
-      '<div class="bl-sizes">' + sizeBtns + "</div>" +
+      '<div class="seg bl-sizes" role="radiogroup" aria-label="How long">' + sizeBtns + "</div>" +
       '<div class="bl-label">Category</div>' +
       '<div class="bl-cats">' + tagBtns + "</div>" +
       '<div class="bl-label">Make it easy to start</div>' +
@@ -529,11 +529,11 @@ var Backlog = (function () {
   function openStarterSheet(tag) {
     var cur = TAGS.indexOf(tag) >= 0 ? tag : "All";
     var chips = ["All"].concat(TAGS).map(function (t) {
-      return '<button class="gap-tag' + (t === cur ? " on" : "") + '" data-tag="' + t + '">' + t + "</button>";
+      return '<button class="fchip gap-tag' + (t === cur ? " on" : "") + '" data-tag="' + t + '">' + icon(t === "All" ? "Any" : t) + t + "</button>";
     }).join("");
     var sheet = openSheet("Ready-made ideas",
       "Each one comes with a first step, steps, where, and what you need. Tap one to see it all.",
-      '<div class="gap-tags">' + chips + "</div>" +
+      '<div class="fchips gap-tags">' + chips + "</div>" +
       '<div class="bl-full bl-starters" id="bl-starterrows"></div>');
 
     function paint() {
@@ -719,8 +719,8 @@ var Backlog = (function () {
     }
   }
 
-  function pickLabel() {
-    return "Just pick one for me" + (gapState.gap ? " (" + sizeLabel(gapState.gap) + ")" : "");
+  function pickSub() {
+    return "One idea, ready to start" + (gapState.gap ? " · fits " + sizeLabel(gapState.gap) : "");
   }
 
   /* ----- Not now: hidden from suggestions for the rest of today ----- */
@@ -888,22 +888,23 @@ var Backlog = (function () {
 
   function pickHTML(it) {
     return '<button class="gap-pick" data-id="' + esc(it.id) + '">' +
+      iconWell(it.tag || "none", "sm") +
       '<span class="gap-pickwhat">' + esc(it.what) + "</span>" +
-      (it.tag ? '<span class="gap-picktag">' + esc(it.tag) + "</span>" : "") +
       '<span class="bl-sizechip">' + sizeLabel(it.size) + "</span></button>";
   }
 
   function gapCardHTML() {
     var sizes = SIZES.map(function (s) {
-      return '<button class="gap-size' + (s === gapState.gap ? " on" : "") + '" data-gap="' + s + '">' + sizeLabel(s) + "</button>";
+      return '<button class="gap-size' + (s === gapState.gap ? " on" : "") + '" data-gap="' + s + '" role="radio">' + sizeLabel(s) + "</button>";
     }).join("");
     var tags = ["Any"].concat(TAGS).map(function (t) {
-      return '<button class="gap-tag' + (t === gapState.tag ? " on" : "") + '" data-tag="' + t + '">' + t + "</button>";
+      return '<button class="fchip gap-tag' + (t === gapState.tag ? " on" : "") + '" data-tag="' + t + '">' + icon(t) + t + "</button>";
     }).join("");
     return '<section class="gap-card glass" aria-label="I have free time">' +
-      '<div class="gap-head"><span class="gap-title">I have free time</span></div>' +
-      '<div class="gap-sizes">' + sizes + "</div>" +
-      '<div class="gap-tags">' + tags + "</div>" +
+      '<div class="gap-head"><span class="gap-title">I have free time</span>' +
+      '<span class="gap-headsub">Choose how long, then a kind</span></div>' +
+      '<div class="seg gap-sizes" role="radiogroup" aria-label="How long">' + sizes + "</div>" +
+      '<div class="fchips gap-tags">' + tags + "</div>" +
       '<div class="gap-results" id="gap-results">' + gapResultsHTML() + "</div>" +
       "</section>";
   }
@@ -994,8 +995,8 @@ var Backlog = (function () {
     gapState.tag = tag;
     gapState.shuffled = null;
     saveGap();
-    var pk = document.getElementById("bl-pickone");
-    if (pk) pk.textContent = pickLabel();
+    var pk = document.getElementById("bl-picksub");
+    if (pk) pk.textContent = pickSub();
     var card = document.querySelector(".gap-card");
     if (!card) return;
     card.querySelectorAll(".gap-size").forEach(function (x) {
@@ -1023,6 +1024,7 @@ var Backlog = (function () {
 
   function rowHTML(it) {
     return '<button class="bl-row" data-id="' + esc(it.id) + '">' +
+      iconWell(it.tag || "none") +
       '<span class="bl-main"><span class="bl-what">' + esc(it.what) + "</span>" +
       '<span class="bl-meta"><span class="bl-sizechip">' + sizeLabel(it.size) + "</span>" +
       '<span class="bl-tag' + (it.tag ? "" : " none") + '">' + esc(it.tag || "No category") + "</span>" +
@@ -1065,20 +1067,25 @@ var Backlog = (function () {
       var head = '<div class="bl-head">' +
         '<div><h1 class="screen-title">Free time</h1>' +
         '<p class="screen-sub">' + sub + "</p></div>" +
-        '<button class="bl-addbtn" id="bl-add" aria-label="Add an idea">' +
-        '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></div>';
+        '<button class="bl-addbtn" id="bl-add" aria-label="Add an idea">' + icon("plus") + "</button></div>";
       var body;
       if (!list.length) {
         body = '<div class="bl-empty glass"><p>Nothing saved yet.</p>' +
           '<p class="bl-emptysub">Save things you want to do. When free time shows up, pick from here instead of deciding on the spot.</p>' +
           '<button class="gap-btn bl-emptybtn" id="bl-starters-empty">See ready-made ideas</button></div>';
       } else {
-        body = '<div class="bl-list glass">' + list.map(rowHTML).join("") + "</div>";
+        body = '<p class="section-label">Your ideas</p>' +
+          '<div class="bl-list glass">' + list.map(rowHTML).join("") + "</div>";
       }
       var open = root.querySelector(".bl-done[open]") !== null;
       var timerHTML = timerCardHTML();
       var pickHTMLBtn = timerHTML ? "" :
-        '<button class="btn bl-pickone" id="bl-pickone">' + pickLabel() + "</button>";
+        '<button class="bl-pickone" id="bl-pickone">' +
+        '<span class="bl-pickdice">' + icon("dice") + "</span>" +
+        '<span class="bl-picktext"><span class="bl-picktitle">Just pick one for me</span>' +
+        '<span class="bl-picksub" id="bl-picksub">' + pickSub() + "</span></span>" +
+        '<svg class="bl-pickchev" viewBox="0 0 8 14" aria-hidden="true"><path d="M1 1l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+        "</button>";
       root.innerHTML = head + timerHTML + pickHTMLBtn + gapCardHTML() + body + doneHTML();
       if (open && root.querySelector(".bl-done")) root.querySelector(".bl-done").open = true;
 
