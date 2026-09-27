@@ -4,48 +4,46 @@
 /* ---------- Together screen ---------- */
 #pod-root { display: flex; flex-direction: column; gap: 14px; }
 
-/* Hero: days in sync this month */
+/* Hero (Stage 2): ring for days in sync, stats beside it */
 .sync-hero {
   padding: 20px;
+  display: flex; align-items: center; gap: 20px;
 }
-.sync-hero-main { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-.hero-label {
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  text-transform: uppercase;
-  color: var(--ink-60);
-  margin: 0 0 2px;
+.hero-ring {
+  --ring: 0;
+  position: relative; flex: none;
+  width: 112px; height: 112px; border-radius: 50%;
+}
+.hero-ring::before {
+  content: ""; position: absolute; inset: 0; border-radius: 50%;
+  background: conic-gradient(var(--sync) calc(var(--ring) * 1%), var(--surface-2) 0);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 10px), #000 calc(100% - 9px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 10px), #000 calc(100% - 9px));
+}
+.hero-ring-in {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
 }
 .hero-num {
   font-family: var(--font-num);
-  font-size: 34px;
-  line-height: 41px;
-  font-weight: 700;
+  font-size: 34px; line-height: 38px; font-weight: 700;
   letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+.hero-of { font-size: 13px; line-height: 16px; color: var(--ink-60); }
+.hero-stats { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+.hero-label {
+  font-size: 13px; font-weight: 600;
+  letter-spacing: 0.04em; text-transform: uppercase;
+  color: var(--ink-60);
   margin: 0;
-  font-variant-numeric: tabular-nums;
-  color: var(--ink);
 }
-.hero-sub { color: var(--ink-60); font-size: 15px; margin: 6px 0 0; white-space: nowrap; }
-.sync-hero-chips {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  align-items: flex-end;
-  padding-bottom: 4px;
-  flex-shrink: 0;
-}
-.hero-chip {
-  padding: 6px 12px;
-  border-radius: var(--r-ctl);
-  background: var(--surface-2);
-  color: var(--ink);
-  font-size: 13px;
-  font-weight: 600;
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-}
+.hero-stat { display: flex; align-items: center; gap: 10px; }
+.hero-stat > span:last-child { display: flex; flex-direction: column; min-width: 0; }
+.hero-stat .ic-well { color: var(--sync); }
+.hs-val { font-size: 17px; line-height: 22px; font-weight: 600; color: var(--ink); }
+.hs-cap { font-size: 13px; line-height: 16px; color: var(--ink-60); }
 
 /* Calendar month */
 .cal-card { border-radius: var(--r-card); padding: 16px; display: flex; flex-direction: column; gap: 12px; }
@@ -126,7 +124,7 @@
   border-bottom: 0.5px solid var(--separator);
 }
 .streak-row:last-child { border-bottom: none; }
-.sr-name { font-size: 17px; font-weight: 600; margin: 0; color: var(--ink); }
+.sr-name { display: flex; align-items: center; gap: 10px; font-size: 17px; font-weight: 600; margin: 0; color: var(--ink); }
 .sr-person {
   display: flex;
   align-items: center;
