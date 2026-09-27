@@ -58,6 +58,8 @@
 .habit-detail { font-size: 15px; color: var(--ink-60); }
 .habit-chev { color: var(--ink-30); font-size: 22px; font-weight: 400; flex-shrink: 0; }
 button.habit-row.habit-add { cursor: pointer; }
+.habit-icon .ic { width: 17px; height: 17px; }
+.habit-icon:not(.habit-add-icon) { color: var(--ink); }
 .habit-add-icon {
   background: var(--me-tint);
   color: var(--me-ink);
@@ -82,28 +84,9 @@ button.habit-row.habit-add { cursor: pointer; }
 .habit-archive-btn { color: var(--destructive); }
 
 /* ---------- Add/edit habit sheet controls ---------- */
-.seg {
-  display: flex;
-  background: var(--surface-2);
-  border-radius: var(--r-ctl);
-  padding: 3px;
-  margin-bottom: 20px;
-}
-.seg button {
-  flex: 1;
-  border: 0;
-  background: none;
-  color: var(--ink);
-  font-family: var(--font-text);
-  font-size: 15px;
-  font-weight: 600;
-  min-height: 44px;
-  cursor: pointer;
-}
-.seg button[aria-pressed="true"] {
-  background: var(--me-tint);
-  color: var(--me-ink);
-}
+/* Segmented controls use the shared .seg from base.css (Stage 2). */
+.seg[role="group"] { margin-bottom: 20px; }
+.seg[role="group"] button { height: auto; min-height: 40px; }
 .chips { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 16px; }
 .chip {
   min-height: 44px;
