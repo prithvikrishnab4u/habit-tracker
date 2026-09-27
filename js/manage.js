@@ -22,9 +22,8 @@ var Manage = (function () {
   }
 
   function habitRow(h) {
-    var letter = (h.name || "?").trim().charAt(0).toUpperCase();
     return '<button class="habit-row" data-habit="' + h.id + '">' +
-      '<span class="habit-icon" aria-hidden="true">' + esc(letter) + "</span>" +
+      '<span class="habit-icon" aria-hidden="true">' + icon(habitIconName(h)) + "</span>" +
       '<span class="habit-text"><span class="habit-name">' + esc(h.name) + "</span>" +
       '<span class="habit-detail">' + esc(detailFor(h)) + "</span></span>" +
       '<span class="habit-chev" aria-hidden="true">\u203A</span></button>';
@@ -407,7 +406,7 @@ var Manage = (function () {
       '<div class="habit-card glass">' +
       habits.map(habitRow).join("") +
       '<button class="habit-row habit-add" id="add-habit">' +
-      '<span class="habit-icon habit-add-icon" aria-hidden="true">+</span>' +
+      '<span class="habit-icon habit-add-icon" aria-hidden="true">' + icon("plus") + "</span>" +
       '<span class="habit-text"><span class="habit-name">Add Habit</span></span>' +
       '<span class="habit-chev" aria-hidden="true">\u203A</span></button>' +
       "</div>" +
