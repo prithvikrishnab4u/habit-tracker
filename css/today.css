@@ -14,8 +14,9 @@
   flex: 0 0 auto;
 }
 
-/* ---------- Header ---------- */
-.today-head { display: flex; flex-direction: column; }
+/* ---------- Header (Stage 3) ----------
+   Date line on top with the day navigator, greeting as the title. */
+.today-head { display: flex; flex-direction: column; gap: 2px; }
 .today-titlerow { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .gear-btn {
   width: 44px; height: 44px;
@@ -29,10 +30,15 @@
 }
 .gear-btn svg { width: 24px; height: 24px; }
 .gear-btn:active { opacity: 0.6; }
-.date-nav { display: flex; align-items: center; margin: -10px 0 -10px -14px; }
-.date-nav .top-date { margin: 0; white-space: nowrap; }
+.date-nav { display: flex; align-items: center; margin: 0 0 0 -12px; }
+.top-date {
+  white-space: nowrap;
+  font-size: 13px; line-height: 18px; font-weight: 600;
+  letter-spacing: 0.04em; text-transform: uppercase;
+  color: var(--ink-60);
+}
 .dnav {
-  width: 36px; height: 44px;
+  width: 32px; height: 44px;
   border: 0; background: none;
   color: var(--ink-60);
   font-size: 22px; line-height: 1;
@@ -40,7 +46,14 @@
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
-.dnav:disabled { opacity: 0.3; }
+.dnav:disabled { opacity: 0.25; }
+.today-greet {
+  margin: 0;
+  font-family: var(--font-num);
+  font-size: 34px; line-height: 40px; font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+}
 .back-pill {
   margin-top: 12px;
   align-self: flex-start;
@@ -57,73 +70,67 @@
 }
 .back-pill:active { opacity: 0.6; }
 
-/* ---------- Sync strip ---------- */
 @property --p { syntax: "<number>"; inherits: false; initial-value: 0; }
 
+/* ---------- Hero: twin rings (Stage 3) ----------
+   You are the outer ring, your partner the inner one. Both turn --sync
+   when the day is in sync, and the check in the middle lights up. */
 .sync-strip {
   background: var(--surface);
   border-radius: var(--r-card);
-  padding: 12px 16px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  padding: 20px;
+  display: flex; align-items: center; gap: 20px;
+  transition: box-shadow 250ms var(--ease);
 }
-.strip-row { display: flex; align-items: center; gap: 8px; }
-.strip-person { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
-.strip-person[data-who="partner"] { flex-direction: row-reverse; }
-.strip-ring {
-  width: 36px; height: 36px;
-  border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
+.sync-strip.synced { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--sync) 55%, transparent); }
+.twin { position: relative; flex: none; width: 128px; height: 128px; }
+.twin-ring {
+  --p: 0;
+  position: absolute; border-radius: 50%;
   background: conic-gradient(var(--c) calc(var(--p) * 1%), var(--surface-2) 0);
-  transition: --p 250ms var(--ease);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 12px), #000 calc(100% - 11px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 12px), #000 calc(100% - 11px));
 }
-.strip-initial {
-  width: 28px; height: 28px;
-  border-radius: 50%;
-  background: color-mix(in srgb, var(--c) 20%, var(--canvas));
-  color: var(--ink);
+.twin-ring { transition: --p 400ms var(--ease); }
+.twin-me { inset: 0; --c: var(--you); }
+.twin-them { inset: 17px; --c: var(--them); }
+.sync-strip.synced .twin-ring { --c: var(--sync); }
+.twin-core {
+  position: absolute; inset: 40px; border-radius: 50%;
   display: flex; align-items: center; justify-content: center;
-  font-size: 13px; font-weight: 600;
+  color: var(--ink-30);
+  transition: background-color 250ms var(--ease), color 250ms var(--ease);
 }
-.strip-pct { font-size: 15px; line-height: 20px; font-weight: 600; min-width: 40px; }
-.strip-person[data-who="partner"] .strip-pct { text-align: right; }
-.strip-bar {
-  flex: 1 1 0;
-  min-width: 24px;
-  height: 4px;
-  border-radius: 999px;
-  background: var(--surface-2);
-  position: relative;
-  overflow: hidden;
-}
-.strip-fill { position: absolute; top: 0; bottom: 0; transition: width 250ms var(--ease), background-color 250ms var(--ease); }
-.strip-fill-me { left: 0; background-color: var(--you); }
-.strip-fill-partner { right: 0; background-color: var(--them); }
-.strip-mid { position: absolute; left: 50%; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--ink-30); }
-.sync-strip.synced .strip-fill { background-color: var(--sync); }
-.strip-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 32px; }
-.strip-status {
-  font-size: 13px; line-height: 18px;
-  color: var(--ink-60);
-  min-width: 0;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.strip-status.is-sync { color: var(--sync); font-weight: 600; }
+.twin-core .ic { width: 26px; height: 26px; stroke-width: 2.4; }
+.sync-strip.synced .twin-core { background: var(--sync); color: #fff; }
+.twin-side { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
+.strip-top { font-size: 17px; line-height: 22px; font-weight: 700; color: var(--ink); }
+.sync-strip.synced .strip-top { color: var(--sync); }
+.strip-status { font-size: 13px; line-height: 18px; color: var(--ink-60); }
+.strip-status.is-sync { color: var(--ink-60); font-weight: 400; }
+.strip-legend { display: flex; flex-direction: column; gap: 4px; margin: 6px 0 4px; width: 100%; }
+.strip-person { display: flex; align-items: center; gap: 8px; font-size: 15px; line-height: 20px; }
+.lg-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.strip-person[data-who="me"] .lg-dot { background: var(--you); }
+.strip-person[data-who="partner"] .lg-dot { background: var(--them); }
+.lg-name { flex: 1; min-width: 0; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.strip-pct { font-weight: 700; color: var(--ink); }
 .nudge {
   position: relative;
   flex-shrink: 0;
   height: 32px;
+  margin-top: 2px;
   padding: 0 14px;
   border: 0;
   border-radius: 999px;
   background: var(--me-tint);
   color: var(--me-ink);
   font-family: var(--font-text);
-  font-size: 15px;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
 }
+.nudge.hidden { display: none; }
 .nudge::after { content: ""; position: absolute; inset: -6px -4px; }
 .nudge:active { opacity: 0.6; }
 
@@ -184,6 +191,22 @@
   -webkit-user-select: none;
 }
 .tile.pressing { transform: scale(0.97); }
+/* Stage 3: tiles fill from the bottom like a glass, in your color. */
+.tile { --fill: 0; isolation: isolate; }
+.tile::before {
+  content: ""; position: absolute; left: 0; right: 0; bottom: 0; z-index: -1;
+  height: calc(var(--fill) * 1%);
+  background: linear-gradient(to bottom,
+    color-mix(in srgb, var(--person) 26%, transparent),
+    color-mix(in srgb, var(--person) 12%, transparent) 40px);
+  box-shadow: inset 0 2px 0 color-mix(in srgb, var(--person) 70%, transparent);
+  transition: height 400ms var(--ease);
+}
+/* Empty stays empty; full loses the surface line and becomes one wash. */
+.tile[style*="--fill: 0"]::before, .tile[style*="--fill:0"]::before { box-shadow: none; }
+.tile.met::before { background: color-mix(in srgb, var(--person) 20%, transparent); box-shadow: none; }
+.tile .t-bar { display: none; }
+.tile { padding-bottom: 16px; }
 /* Goal met: the icon fills with your color. */
 .tile .ic-well { transition: background-color 250ms var(--ease), color 250ms var(--ease); }
 .tile.met .ic-well { background: var(--person); color: #fff; }
@@ -340,7 +363,7 @@
 
 /* ---------- Reduced motion ---------- */
 @media (prefers-reduced-motion: reduce) {
-  .strip-ring, .strip-fill, .t-bar i, .check-circle, .sync-drop { transition: none; }
-  .tile, .tile-add, .tile .ic-well, .today-bridge { transition: none; }
+  .twin-ring, .t-bar i, .check-circle, .sync-drop { transition: none; }
+  .tile, .tile-add, .tile .ic-well, .today-bridge, .tile::before, .twin-core, .sync-strip { transition: none; }
   .tile.pressing, .tile-add:active, .meal-chip:active { transform: none; }
 }
