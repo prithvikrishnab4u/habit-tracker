@@ -37,3 +37,10 @@ Every file in `js/` is a plain script that defines one global through the IIFE m
 - The two member ids, `prithvi` and `sowmya`, are hardcoded in a few places (`colors.js` defaults, onboarding, `demo.js`).
 - Known limit: the Together screen reads a 31-day window, so weekly streaks can't grow past about 4 weeks.
 - **CSS** is split per screen: `css/base.css` holds the tokens, shell, tab bar, sheets, toast and shared controls. `today.css`, `together.css`, `backlog.css`, `habits.css` and `onboarding.css` each style one screen. The design rules (the "Calm glass" style) are: screens use only base tokens (`--surface`, `--surface-2`, `--separator`, `--sync`, `--r-ctl`/`--r-card`/`--r-sheet`); `backdrop-filter` is used only on the tab bar, sheets, toast and status band; no habit tint colors; no infinite animations; font sizes are limited to 34/28/22/17/15/13/11, and inputs are at least 16px.
+- **Stage 2 building blocks** (in `base.css` and `util.js`). Each kind of control has its own look, so people can tell what it does before tapping:
+  - `.seg` is a segmented control for choosing one of a few options (time, type, repeats).
+  - `.fchip` is a filter chip with an icon, in a scrolling `.fchips` row.
+  - Filled buttons are actions.
+  - Every habit and category shows its identity as an icon in an `.ic-well`. Draw it with `icon(name)` or `iconWell(name)`, and pick a habit's icon with `habitIconName(habit)` from `util.js`. Add new icons to `ICON_PATHS` as 24px line drawings.
+  - A Today tile gets the class `met` when its goal is reached, and its icon fills with `--person`.
+  - `.section-label` introduces a group of cards. Free time's "Just pick one" is the only filled card on its screen, on purpose.
