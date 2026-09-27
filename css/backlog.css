@@ -14,7 +14,7 @@
   color: var(--ink); cursor: pointer;
   display: flex; align-items: center; justify-content: center;
 }
-.bl-addbtn svg { width: 18px; height: 18px; }
+.bl-addbtn .ic { width: 20px; height: 20px; }
 .bl-addbtn:active { transform: scale(0.97); }
 .bl-loading { color: var(--ink-60); font-size: 15px; padding: 24px 0; text-align: center; }
 
@@ -62,23 +62,8 @@
   font-family: var(--font-text); font-size: 17px; color: var(--ink);
 }
 .bl-input::placeholder { color: var(--ink-30); }
-.bl-sizes { display: flex; gap: 8px; }
-.bl-size {
-  flex: 1; height: 44px; border-radius: 999px;
-  border: 0; background: var(--surface-2);
-  font-family: var(--font-text); font-size: 15px; font-weight: 600; color: var(--ink);
-  cursor: pointer;
-}
-.bl-size.on { background: var(--me-tint); color: var(--me-ink); }
 .bl-label { font-size: 13px; font-weight: 600; color: var(--ink-60); margin-bottom: -6px; }
 .bl-cats { display: flex; gap: 8px; flex-wrap: wrap; }
-.bl-cat {
-  height: 36px; padding: 0 14px; border-radius: 999px;
-  border: 0; background: var(--surface-2);
-  font-family: var(--font-text); font-size: 15px; font-weight: 600; color: var(--ink-60);
-  cursor: pointer;
-}
-.bl-cat.on { background: var(--me-tint); color: var(--me-ink); }
 .bl-save { margin-top: 2px; }
 
 /* Full state: drop one first */
@@ -121,7 +106,6 @@
 .bl-emptybtn { margin-top: 14px; }
 
 /* ---------- Just pick one ---------- */
-.bl-pickone { max-width: none; border-radius: 999px; }
 
 /* ---------- Ready to start: details on the idea sheet and timer ---------- */
 .bl-details { display: flex; flex-direction: column; gap: 14px; }
@@ -204,24 +188,9 @@
   padding: 16px;
   display: flex; flex-direction: column; gap: 12px;
 }
-.gap-head { display: flex; align-items: center; }
+.gap-head { display: flex; flex-direction: column; gap: 2px; }
+.gap-headsub { font-size: 13px; color: var(--ink-60); }
 .gap-title { font-size: 17px; font-weight: 600; color: var(--ink); }
-.gap-sizes { display: flex; gap: 8px; }
-.gap-size {
-  flex: 1; height: 44px; border-radius: 999px;
-  border: 0; background: var(--surface-2);
-  font-family: var(--font-text); font-size: 15px; font-weight: 600; color: var(--ink);
-  cursor: pointer;
-}
-.gap-size.on { background: var(--me-tint); color: var(--me-ink); }
-.gap-tags { display: flex; gap: 8px; flex-wrap: wrap; }
-.gap-tag {
-  height: 32px; padding: 0 14px; border-radius: 999px;
-  border: 0; background: var(--surface-2);
-  font-family: var(--font-text); font-size: 13px; font-weight: 600; color: var(--ink-60);
-  cursor: pointer;
-}
-.gap-tag.on { background: var(--me-tint); color: var(--me-ink); }
 .gap-results { display: flex; flex-direction: column; gap: 8px; }
 .gap-hint { margin: 0; font-size: 13px; color: var(--ink-60); }
 .gap-pick {
@@ -254,4 +223,43 @@
   border: 0; background: var(--surface-2);
   font-family: var(--font-text); font-size: 13px; font-weight: 600; color: var(--ink);
   cursor: pointer;
+}
+
+/* ---------- Stage 2 ---------- */
+/* Just pick one: the one filled card on the screen, so it reads as the
+   main thing to do here. */
+.bl-pickone {
+  display: flex; align-items: center; gap: 14px;
+  width: 100%; padding: 16px;
+  border: 0; border-radius: var(--r-card);
+  background: var(--person); color: #fff;
+  text-align: left; cursor: pointer;
+  font-family: var(--font-text);
+  transition: transform 100ms var(--ease);
+}
+.bl-pickone:active { transform: scale(0.98); }
+.bl-pickdice {
+  width: 44px; height: 44px; flex: none;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.2);
+  display: flex; align-items: center; justify-content: center;
+}
+.bl-pickdice .ic { width: 26px; height: 26px; }
+.bl-picktext { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.bl-picktitle { font-size: 17px; line-height: 22px; font-weight: 700; }
+.bl-picksub { font-size: 13px; line-height: 18px; opacity: 0.85; }
+.bl-pickchev { width: 8px; height: 14px; flex: none; opacity: 0.8; }
+
+/* Pickers in the sheet: segmented time, wrapping category chips */
+.bl-cats { display: flex; gap: 8px; flex-wrap: wrap; }
+.bl-cats .fchip { height: 36px; font-size: 15px; }
+.bl-cats .fchip .ic { width: 17px; height: 17px; }
+
+/* Rows lead with the category icon */
+.bl-row { gap: 12px; padding-left: 14px; }
+.gap-pick { padding: 8px 12px 8px 8px; gap: 12px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .bl-pickone { transition: none; }
+  .bl-pickone:active { transform: none; }
 }
