@@ -16,7 +16,10 @@
      where and need (things or links, one per line) so starting takes no
      thinking. Start shows all of it with a step checklist.
    - "Just pick one for me": one idea, no choosing. Rotates categories and
-     prefers ideas that have steps. STARTERS are ready-made ideas. */
+     prefers ideas that have steps.
+   - v2 Phase F: ready-made ideas come from starters.js. When your own
+     list has nothing that fits, Just pick one offers a ready-made idea,
+     and Start adds it to your list and starts the clock. */
 
 var Backlog = (function () {
   var SIZES = [15, 30, 60, 120];
@@ -32,53 +35,6 @@ var Backlog = (function () {
   var LS_TIMER = "ht.blTimer";   // { id, what, size, start, checked } running block
   var LS_PICK = "ht.blLastPick"; // category of the last "Just pick one"
 
-  // Ready-made ideas, complete with steps, so there is something to pick.
-  var STARTERS = [
-    { what: "10-minute walk", size: 15, tag: "Body",
-      first: "Put on your shoes and step outside.",
-      steps: ["Walk one way for 5 minutes.", "Turn around and walk back.", "Phone stays in your pocket."],
-      where: "Outside, any direction.", need: ["Shoes", "Keys"] },
-    { what: "Bodyweight circuit", size: 15, tag: "Body",
-      first: "Clear a mat-sized spot on the floor.",
-      steps: ["10 squats", "10 push-ups (knees down is fine)", "30-second plank", "Rest 1 minute", "Do 3 rounds"],
-      where: "Living room floor", need: ["Nothing. A mat if you have one."] },
-    { what: "Stretch reset", size: 15, tag: "Body",
-      first: "Stand up and roll your shoulders 10 times.",
-      steps: ["Neck: slow circles, 30 seconds each way", "Chest: hands on a door frame, lean in, 30 seconds",
-        "Hamstrings: reach for your toes, 1 minute", "Hips: lunge stretch, 1 minute each side", "Back: child's pose, 1 minute"],
-      where: "Anywhere with floor space", need: ["Nothing"] },
-    { what: "20-minute walk-run", size: 30, tag: "Body",
-      first: "Change into shoes you can run in.",
-      steps: ["Walk briskly for 5 minutes", "Run 1 minute, walk 2 minutes. Do this 4 times", "Walk 3 minutes to cool down"],
-      where: "A loop from your door", need: ["Running shoes", "Water for after"] },
-    { what: "Outline one article", size: 30, tag: "Work",
-      first: "Open a blank note and type a working title.",
-      steps: ["Write the one sentence you want readers to remember", "Write 5 bullet points that lead to it",
-        "Under each bullet, add one real example", "Stop there. Drafting is a separate block."],
-      where: "Desk, laptop", need: ["Notes app"] },
-    { what: "Plan tomorrow's top 3", size: 15, tag: "Work",
-      first: "Open tomorrow in your calendar.",
-      steps: ["Look at meetings and fixed times", "Write the 3 things that would make tomorrow a good day",
-        "Put the hardest one in the first free slot"],
-      where: "Anywhere", need: ["Calendar", "Notes app"] },
-    { what: "Read and note one article", size: 30, tag: "Learn",
-      first: "Open your reading list and pick the oldest saved article.",
-      steps: ["Read it once, no notes", "Write 3 takeaways in your own words", "Write one thing you will try or share"],
-      where: "A quiet chair", need: ["Reading list", "Notes app"] },
-    { what: "Inbox down to 10", size: 30, tag: "Admin",
-      first: "Open your inbox and sort by oldest.",
-      steps: ["Archive anything you won't act on", "Reply now to anything under 2 minutes",
-        "Move the rest to one follow-up folder", "Stop at 10 left"],
-      where: "Desk, laptop", need: ["Email"] },
-    { what: "Clear one surface", size: 15, tag: "Home",
-      first: "Pick the most cluttered table or counter.",
-      steps: ["Take everything off", "Wipe it down", "Put back only what belongs there", "The rest goes where it lives, or out"],
-      where: "Kitchen counter, desk or table", need: ["A cloth", "A bag for rubbish"] },
-    { what: "Call someone you miss", size: 15, tag: "Family",
-      first: "Open your recent calls and find someone you haven't spoken to in a month.",
-      steps: ["Call. No answer? Send a voice note", "Ask one real question about their week"],
-      where: "Even better on a walk", need: ["Phone"] }
-  ];
 
   var cache = null;      // { items, done } for the current person
   var cachePerson = null;
@@ -267,7 +223,9 @@ var Backlog = (function () {
     if (extra.where) item.where = extra.where;
     if (extra.need && extra.need.length) item.need = extra.need.slice();
     pushUndo({ type: "remove", id: item.id });
-    return commit({ type: "add", item: item }, "Backlog add").then(function () { return item; });
+    var p = commit({ type: "add", item: item }, "Backlog add").then(function () { return item; });
+    p.item = item; // the new id, for Start now on a ready-made idea
+    return p;
   }
 
   function removeItem(id) {
@@ -328,7 +286,12 @@ var Backlog = (function () {
   // Escaped text with http(s) links made tappable.
   function linkify(line) {
     return esc(line).replace(/https?:\/\/[^\s<]+/g, function (u) {
-      return '<a class="bl-link" href="' + u + '" target="_blank" rel="noopener noreferrer">' + u + "</a>";
+      // Show the site, plus the path when it's short: haveibeenpwned.com,
+      // myaccount.google.com/security-checkup, youtube.com.
+      var label = u.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "");
+      var cut = label.indexOf("/");
+      if (cut > 0 && label.length > 40) label = label.slice(0, cut);
+      return '<a class="bl-link" href="' + u + '" target="_blank" rel="noopener noreferrer">' + label + "</a>";
     });
   }
 
@@ -472,7 +435,7 @@ var Backlog = (function () {
     } else {
       sheet.el.querySelector("#bl-starters").addEventListener("click", function () {
         sheet.close();
-        openStarterSheet();
+        openStarterSheet(tag);
       });
     }
 
@@ -550,27 +513,97 @@ var Backlog = (function () {
 
   /* ----- ready-made ideas ----- */
 
-  function openStarterSheet() {
-    var have = items().map(function (it) { return it.what.toLowerCase(); });
-    var rows = STARTERS.map(function (st, i) {
-      var added = have.indexOf(st.what.toLowerCase()) >= 0;
-      return '<div class="bl-fullrow"><span class="bl-fullwhat">' + esc(st.what) +
-        '<span class="bl-startermeta">' + sizeLabel(st.size) + " · " + st.tag + " · " + esc(st.first) + "</span></span>" +
-        '<button class="bl-drop bl-take" data-i="' + i + '"' + (added ? " disabled" : "") + ">" +
-        (added ? "Added" : "Add") + "</button></div>";
+  function haveStarter(st) {
+    var k = Starters.key(st);
+    return items().some(function (it) { return "s:" + it.what.toLowerCase() === k; });
+  }
+
+  function addStarter(st) {
+    if (count() >= CAP) { openFullSheet(); return null; }
+    var p = addItem(st.what, st.size, st.tag, st);
+    p.catch(function () {});
+    return p.item;
+  }
+
+  // tag: open on one category ("All" by default).
+  function openStarterSheet(tag) {
+    var cur = TAGS.indexOf(tag) >= 0 ? tag : "All";
+    var chips = ["All"].concat(TAGS).map(function (t) {
+      return '<button class="gap-tag' + (t === cur ? " on" : "") + '" data-tag="' + t + '">' + t + "</button>";
     }).join("");
     var sheet = openSheet("Ready-made ideas",
-      "Each one comes with steps, where, and what you need. Edit any of it to fit you.",
-      '<div class="bl-full bl-starters">' + rows + "</div>");
-    sheet.el.querySelectorAll(".bl-take").forEach(function (b) {
+      "Each one comes with a first step, steps, where, and what you need. Tap one to see it all.",
+      '<div class="gap-tags">' + chips + "</div>" +
+      '<div class="bl-full bl-starters" id="bl-starterrows"></div>');
+
+    function paint() {
+      var box = sheet.el.querySelector("#bl-starterrows");
+      box.innerHTML = Starters.list.map(function (st, i) {
+        if (cur !== "All" && st.tag !== cur) return "";
+        var added = haveStarter(st);
+        return '<div class="bl-fullrow"><button class="bl-starterrow" data-i="' + i + '">' +
+          '<span class="bl-starterwhat">' + esc(st.what) + "</span>" +
+          '<span class="bl-startermeta">' + sizeLabel(st.size) + " · " + st.tag + " · " + esc(st.first) + "</span></button>" +
+          '<button class="bl-drop bl-take" data-i="' + i + '"' + (added ? " disabled" : "") + ">" +
+          (added ? "Added" : "Add") + "</button></div>";
+      }).join("");
+      box.querySelectorAll(".bl-starterrow").forEach(function (b) {
+        b.addEventListener("click", function () {
+          sheet.close();
+          openStarterIdea(Starters.list[Number(b.dataset.i)], "browse");
+        });
+      });
+      box.querySelectorAll(".bl-take").forEach(function (b) {
+        b.addEventListener("click", function () {
+          if (b.disabled) return;
+          if (count() >= CAP) { showToast("Your list is full. Drop one first."); return; }
+          addStarter(Starters.list[Number(b.dataset.i)]);
+          b.disabled = true;
+          b.textContent = "Added";
+          render();
+        });
+      });
+    }
+    sheet.el.querySelectorAll(".gap-tag").forEach(function (b) {
       b.addEventListener("click", function () {
-        if (b.disabled) return;
-        if (count() >= CAP) { showToast("Your list is full. Drop one first."); return; }
-        var st = STARTERS[Number(b.dataset.i)];
-        addItem(st.what, st.size, st.tag, st).catch(function () {});
-        b.disabled = true;
-        b.textContent = "Added";
-        render();
+        cur = b.dataset.tag;
+        sheet.el.querySelectorAll(".gap-tag").forEach(function (x) { x.classList.toggle("on", x === b); });
+        paint();
+      });
+    });
+    paint();
+  }
+
+  // A ready-made idea before it is on your list. mode: "browse" or "pick".
+  function openStarterIdea(st, mode) {
+    var added = haveStarter(st);
+    var sub = (mode === "pick" ? "Ready-made, picked for you · " : "Ready-made · ") +
+      sizeLabel(st.size) + " · " + st.tag;
+    var sheet = openSheet(st.what, sub,
+      '<button class="btn" data-act="start">Start ' + sizeLabel(st.size) + "</button>" +
+      detailsHTML(st, null) +
+      '<div class="bl-actions">' +
+      (added ? "" : '<button class="bl-act" data-act="add">Add to my list for later</button>') +
+      (mode === "pick" ? '<button class="bl-act" data-act="skip">Something else</button>' :
+        '<button class="bl-act" data-act="back">More ready-made ideas</button>') +
+      "</div>");
+    sheet.el.querySelectorAll("[data-act]").forEach(function (b) {
+      b.addEventListener("click", function () {
+        var act = b.dataset.act;
+        sheet.close();
+        if (act === "start") {
+          // Start needs an id on the list, so it adds the idea first.
+          var existing = items().filter(function (it) { return "s:" + it.what.toLowerCase() === Starters.key(st); })[0];
+          var it = existing || addStarter(st);
+          if (it) startTimer(it);
+        } else if (act === "add") {
+          if (addStarter(st)) { render(); toastUndo("Added."); }
+        } else if (act === "skip") {
+          skipToday(Starters.key(st));
+          setTimeout(pickOne, 260);
+        } else if (act === "back") {
+          setTimeout(function () { openStarterSheet(st.tag); }, 260);
+        }
       });
     });
   }
@@ -646,17 +679,30 @@ var Backlog = (function () {
   // Fits the chosen time (any size when none is chosen), skips Not now,
   // avoids the category picked last time, prefers ideas with steps, then
   // the oldest.
+  // Your own ideas first. When none fits, a ready-made one you don't have.
   function pickOne() {
-    if (!count()) { openStarterSheet(); return; }
     var gap = gapState.gap || SIZES[SIZES.length - 1];
     var skip = skipped();
+    var last = lsGet(LS_PICK);
     var pool = items().filter(function (it) { return it.size <= gap && skip.indexOf(it.id) < 0; });
     if (!pool.length) {
-      showToast(gapState.gap ? "Nothing else fits " + sizeLabel(gap) + " today. Try more time." :
-        "You have passed on everything today.");
+      var ready = Starters.list.filter(function (st) {
+        return st.size <= gap && !haveStarter(st) && skip.indexOf(Starters.key(st)) < 0;
+      });
+      if (!ready.length) {
+        showToast(gapState.gap ? "Nothing else fits " + sizeLabel(gap) + " today. Try more time." :
+          "You have passed on everything today.");
+        return;
+      }
+      // Rotate away from the last category, then a random one, so it isn't
+      // always the first idea in the library.
+      var fresh = ready.filter(function (st) { return st.tag !== last; });
+      if (fresh.length) ready = fresh;
+      var st = ready[Math.floor(Math.random() * ready.length)];
+      lsSet(LS_PICK, st.tag);
+      openStarterIdea(st, "pick");
       return;
     }
-    var last = lsGet(LS_PICK);
     pool.sort(function (a, b) {
       var ra = a.tag && a.tag === last ? 1 : 0, rb = b.tag && b.tag === last ? 1 : 0;
       if (ra !== rb) return ra - rb;
@@ -885,7 +931,8 @@ var Backlog = (function () {
       if (tag !== "Any" && matches(gap, "Any", false).length) {
         btns.push('<button class="gap-btn" data-go="any">Show any category</button>');
       }
-      btns.push('<button class="gap-btn" data-go="add">Add ' + (tag === "Any" ? "an" : "a " + esc(tag)) + " idea</button>");
+      btns.push('<button class="gap-btn" data-go="starters">Ready-made ' + (tag === "Any" ? "" : esc(tag) + " ") + "ideas</button>");
+      btns.push('<button class="gap-btn" data-go="add">Add your own</button>');
       return '<p class="gap-hint">' + esc(msg) + "</p>" +
         '<div class="gap-btns">' + btns.join("") + "</div>";
     }
@@ -922,7 +969,7 @@ var Backlog = (function () {
         if (go === "add") {
           openEditSheet({ size: gapState.gap, tag: gapState.tag === "Any" ? undefined : gapState.tag });
         } else if (go === "starters") {
-          openStarterSheet();
+          openStarterSheet(gapState.tag);
         } else if (go === "any") {
           setGap(gapState.gap, "Any");
         } else if (go === "unskip") {
@@ -1035,7 +1082,7 @@ var Backlog = (function () {
       var pk = document.getElementById("bl-pickone");
       if (pk) pk.addEventListener("click", pickOne);
       var se = document.getElementById("bl-starters-empty");
-      if (se) se.addEventListener("click", openStarterSheet);
+      if (se) se.addEventListener("click", function () { openStarterSheet(); });
       bindTimer();
       bindGapCard();
       root.querySelectorAll(".bl-row").forEach(function (b) {
