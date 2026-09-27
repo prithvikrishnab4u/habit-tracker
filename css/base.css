@@ -76,6 +76,9 @@
   --ink-50: rgba(235, 235, 245, 0.5);
   --you: var(--person);
   --font-display: var(--font-text);
+  /* Stage 2: selected segment and icon well. */
+  --seg-on: rgba(255, 255, 255, 0.18);
+  --seg-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
   --error: var(--destructive);
   color-scheme: dark;
 }
@@ -118,6 +121,8 @@
     --ink-10: rgba(60, 60, 67, 0.1);
     --ink-40: rgba(60, 60, 67, 0.4);
     --ink-50: rgba(60, 60, 67, 0.5);
+    --seg-on: #FFFFFF;
+    --seg-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
     color-scheme: light;
   }
 }
@@ -514,3 +519,74 @@ body.on-settings #tabbar { display: none; }
 /* Shared controls. */
 .chip, .seg button { border-radius: var(--r-ctl); }
 .btn { border-radius: 14px; }
+
+/* ---------- Stage 2: shared building blocks ----------
+   Three kinds of control, each with its own look, so you can tell what a
+   thing does before you tap it:
+   - .seg: choose one of a few (time). Sits in a track, selection slides.
+   - .fchip: filter (category). Icon + word, scrolls in one row.
+   - .btn / buttons: actions.
+   .ic-well gives every habit and category the same identity shape. */
+
+.ic { width: 20px; height: 20px; flex: none; display: block; }
+.ic-well {
+  width: 34px; height: 34px; flex: none;
+  border-radius: var(--r-ctl);
+  background: var(--surface-2);
+  color: var(--ink);
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.ic-well .ic { width: 19px; height: 19px; }
+.ic-well.sm { width: 28px; height: 28px; border-radius: 8px; }
+.ic-well.sm .ic { width: 16px; height: 16px; }
+.ic-well.me { background: var(--me-tint); color: var(--me-ink); }
+
+.section-label {
+  margin: 8px 4px -6px;
+  font-size: 13px; line-height: 18px; font-weight: 600;
+  letter-spacing: 0.04em; text-transform: uppercase;
+  color: var(--ink-60);
+}
+.section-label:first-child { margin-top: 0; }
+
+.seg {
+  display: flex; gap: 2px;
+  padding: 3px;
+  border-radius: 12px;
+  background: var(--surface-2);
+}
+.seg button {
+  flex: 1; min-width: 0; height: 36px;
+  border: 0; border-radius: 9px;
+  background: transparent;
+  font-family: var(--font-text); font-size: 15px; font-weight: 600;
+  color: var(--ink-60);
+  cursor: pointer;
+  transition: background-color 180ms var(--ease), color 180ms var(--ease);
+}
+.seg button.on, .seg button[aria-pressed="true"] { background: var(--seg-on); color: var(--ink); box-shadow: var(--seg-shadow); }
+
+.fchips {
+  display: flex; gap: 8px;
+  overflow-x: auto; scrollbar-width: none;
+  margin: 0 -16px; padding: 0 16px;
+  scroll-padding: 0 16px;
+}
+.fchips::-webkit-scrollbar { display: none; }
+.fchip {
+  flex: none;
+  display: inline-flex; align-items: center; gap: 6px;
+  height: 34px; padding: 0 12px 0 10px;
+  border-radius: 999px;
+  border: 1px solid var(--separator);
+  background: transparent;
+  font-family: var(--font-text); font-size: 13px; font-weight: 600;
+  color: var(--ink-60);
+  cursor: pointer;
+}
+.fchip .ic { width: 16px; height: 16px; }
+.fchip.on { background: var(--ink); border-color: var(--ink); color: var(--canvas); }
+
+@media (prefers-reduced-motion: reduce) {
+  .seg button { transition: none; }
+}
