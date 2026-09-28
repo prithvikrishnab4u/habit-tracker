@@ -27,7 +27,7 @@ var Backlog = (function () {
   var CAP = 20;
   var DONE_KEEP = 50;
   var STALE_DAYS = 30;
-  var TAGS = ["Work", "Home", "Learn", "Body", "Family", "Admin"];
+  var TAGS = ["Work", "Learn", "Mind", "Body", "Home", "Family", "Admin"];
 
   var LS_GAP = "ht.blGap";       // { gap, tag } last picker choice
   var LS_TAG = "ht.blLastTag";   // last category used when adding
@@ -542,7 +542,7 @@ var Backlog = (function () {
       return '<button class="fchip gap-tag' + (t === cur ? " on" : "") + '" data-tag="' + t + '">' + icon(t === "All" ? "Any" : t) + t + "</button>";
     }).join("");
     var sheet = openSheet("Ready-made ideas",
-      "Each one ends with something real: a draft, a diagram, a fixed weak spot. Tap one to see it all.",
+      "Each one ends with something real: a plan, a skill, a draft, a calmer head. Tap one to see it all.",
       '<div class="fchips gap-tags">' + chips + "</div>" +
       '<div class="bl-full bl-starters" id="bl-starterrows"></div>');
 
