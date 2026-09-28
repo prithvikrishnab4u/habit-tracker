@@ -151,6 +151,9 @@
       });
     });
 
+    announceUpdate();
+    checkForUpdate();
+
     if (Store.isSetup()) {
       tryLoad();
     } else {
@@ -160,6 +163,7 @@
     // Refetch when the app comes back to the foreground (spec: no cached
     // habit data in v1).
     document.addEventListener("visibilitychange", function () {
+      if (!document.hidden) checkForUpdate();
       if (!document.hidden && Store.isSetup() && navigator.onLine) {
         // Drop cached check-ins so the partner's latest entries come through.
         Data.invalidateAll();
@@ -171,6 +175,34 @@
         }).catch(function () {});
       }
     });
+  }
+
+  // Stage 3: self-update. An iPhone home-screen app can keep an old
+  // index.html in memory for days, so on boot and on every return to the
+  // foreground, fetch the live page and compare its build tag. When it's
+  // newer, open the new build once (a new URL, so nothing cached answers).
+  // sessionStorage stops a loop if the CDN is still serving the old page.
+  function checkForUpdate() {
+    if (!navigator.onLine || !window.fetch) return;
+    var mine = document.body.getAttribute("data-build");
+    fetch("./?check=" + Date.now(), { cache: "no-store" }).then(function (r) {
+      return r.ok ? r.text() : "";
+    }).then(function (html) {
+      var m = html.match(/data-build="([^"]+)"/);
+      if (!m || m[1] === mine) return;
+      var tried = null;
+      try { tried = sessionStorage.getItem("ht.updatedTo"); } catch (e) {}
+      if (tried === m[1]) return;
+      try { sessionStorage.setItem("ht.updatedTo", m[1]); } catch (e) {}
+      location.replace("./?b=" + encodeURIComponent(m[1]));
+    }).catch(function () {});
+  }
+
+  // After a self-update, say so once and tidy the address.
+  function announceUpdate() {
+    if (!/[?&]b=/.test(location.search)) return;
+    try { history.replaceState(null, "", "./"); } catch (e) {}
+    setTimeout(function () { showToast("Updated to the latest version."); }, 800);
   }
 
   // Boot load: only a bad/revoked token (401/403) sends the user back to
