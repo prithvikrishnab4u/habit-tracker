@@ -96,6 +96,7 @@ var ICON_PATHS = {
   Learn: '<path d="M4 5.5A1.5 1.5 0 0 1 5.5 4H11v16H5.5A1.5 1.5 0 0 1 4 18.5zM20 5.5A1.5 1.5 0 0 0 18.5 4H13v16h5.5a1.5 1.5 0 0 0 1.5-1.5z"/>',
   Body: '<path d="M3 12.5h4l2.2-5 3.6 10 2.2-5H21"/>',
   Family: '<circle cx="9" cy="8.5" r="3"/><circle cx="17" cy="9.5" r="2.5"/><path d="M3.5 19.5c.5-3.3 2.8-5 5.5-5s5 1.7 5.5 5M15 14.4c.6-.2 1.3-.3 2-.3 2.3 0 3.8 1.6 4 4.4"/>',
+  Mind: '<path d="M11 3.5l1.9 5.1 5.1 1.9-5.1 1.9L11 17.5l-1.9-5.1L4 10.5l5.1-1.9z"/><path d="M18.5 15v5M16 17.5h5"/>',
   Admin: '<rect x="5" y="4.5" width="14" height="16" rx="2.5"/><path d="M9 4.5v-1h6v1M9 12.5l2 2 4-4"/>',
   Any: '<rect x="4" y="4" width="6.5" height="6.5" rx="1.8"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1.8"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1.8"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1.8"/>',
   none: '<circle cx="12" cy="12" r="7.5" stroke-dasharray="3 3"/>',
