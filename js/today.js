@@ -1100,6 +1100,34 @@ var Today = (function () {
     };
   }
 
+  /* ----- pour: the opening moment (Stage 3) -----
+     The first time Today paints a day in this session, the rings and
+     tiles start empty and fill to their values, one after another, like
+     pouring. Later repaints (taps, tab switches) are instant. Skipped
+     for reduced motion. */
+  // Two classes do it, so late repaints (the weekly count arriving) still
+  // land on the right value: pour-start holds everything at zero, and
+  // pour-anim gives the slow, staggered transitions while it lets go.
+  var poured = {};
+  function pour(root, dateStr) {
+    if (poured[dateStr]) return;
+    poured[dateStr] = true;
+    if (window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    var n = 0;
+    root.querySelectorAll(".twin-ring, .tile").forEach(function (el) {
+      var tile = el.classList.contains("tile");
+      el.style.setProperty("--pour-delay", (tile ? 250 + n++ * 70 : 0) + "ms");
+    });
+    root.classList.add("pour-start", "pour-anim");
+    void root.offsetHeight;
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        root.classList.remove("pour-start");
+        setTimeout(function () { root.classList.remove("pour-anim"); }, 1800);
+      });
+    });
+  }
+
   /* ----- header ----- */
   // Stage 3 ("Fill the day, together"): the date is a small line on top,
   // with the day navigator; the title greets you by the time of day. Past
@@ -1239,6 +1267,8 @@ var Today = (function () {
 
     var nudgeStripBtn = document.getElementById("nudge-btn-strip");
     if (nudgeStripBtn) nudgeStripBtn.addEventListener("click", nudge);
+
+    pour(root, dateStr);
 
     var bridge = document.getElementById("today-bridge");
     if (bridge) bridge.addEventListener("click", function () { Backlog.bridgeTap(); });
