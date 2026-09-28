@@ -16,7 +16,7 @@ Test changes by hand in a browser. The app needs a real token for the data repo 
 
 ## Deploying and cache busting
 
-`index.html` loads every CSS/JS file with a `?v=<build>` query string and sets `<body data-build="<build>">`, which the Habits & settings screen shows as the build tag. `_headers` sets `Cache-Control: no-cache`. The existing history uses one commit per changed file (`Phase X: ...` or `deploy <file>`), followed by a `deploy index.html (build <hash>)` commit that changes every `?v=` and `data-build` to the short hash of the latest content commit. When you change JS or CSS, update all those build strings together so installed PWAs pick up the new files.
+`index.html` loads every CSS/JS file with a `?v=<build>` query string and sets `<body data-build="<build>">`, which the Habits & settings screen shows as the build tag. `_headers` sets `Cache-Control: no-cache`. The existing history uses one commit per changed file (`Phase X: ...` or `deploy <file>`), followed by a `deploy index.html (build <hash>)` commit that changes every `?v=` and `data-build` to the short hash of the latest content commit. When you change JS or CSS, update all those build strings together so installed PWAs pick up the new files. The app also updates itself: `checkForUpdate()` in `app.js` runs on boot and on every return to the foreground, fetches the live page, and when its `data-build` differs, opens `./?b=<build>` once (guarded by `sessionStorage` `ht.updatedTo`) and shows "Updated to the latest version." An iPhone home-screen app can otherwise keep an old `index.html` for days, so always bump `data-build` when you deploy.
 
 ## Architecture
 
