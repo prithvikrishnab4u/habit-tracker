@@ -134,6 +134,14 @@
 .nudge::after { content: ""; position: absolute; inset: -6px -4px; }
 .nudge:active { opacity: 0.6; }
 
+/* Pour: the opening fill, slower and staggered (see pour() in today.js). */
+.pour-start .twin-ring { --p: 0 !important; transition: none !important; }
+.pour-start .tile { --fill: 0 !important; }
+.pour-start .tile::before { transition: none !important; }
+.pour-anim .twin-ring { transition: --p 1100ms var(--ease) var(--pour-delay, 0ms); }
+.pour-anim .twin-them { transition-delay: 150ms; }
+.pour-anim .tile::before { transition: height 900ms var(--ease) var(--pour-delay, 0ms); }
+
 /* ---------- Sync moment: the drop-down pill only ---------- */
 .sync-drop {
   position: fixed;
