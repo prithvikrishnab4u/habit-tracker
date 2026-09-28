@@ -222,6 +222,7 @@ var Backlog = (function () {
     if (extra.steps && extra.steps.length) item.steps = extra.steps.slice();
     if (extra.where) item.where = extra.where;
     if (extra.need && extra.need.length) item.need = extra.need.slice();
+    if (extra.outcome) item.outcome = extra.outcome;
     pushUndo({ type: "remove", id: item.id });
     var p = commit({ type: "add", item: item }, "Backlog add").then(function () { return item; });
     p.item = item; // the new id, for Start now on a ready-made idea
@@ -280,7 +281,7 @@ var Backlog = (function () {
   }
 
   function isReady(it) {
-    return !!(it.first || (it.steps && it.steps.length));
+    return !!(it.first || it.outcome || (it.steps && it.steps.length));
   }
 
   // Escaped text with http(s) links made tappable.
@@ -300,6 +301,10 @@ var Backlog = (function () {
     var h = "";
     var steps = it.steps || [];
     var need = it.need || [];
+    if (it.outcome) {
+      h += '<div class="bl-d bl-outcome"><div class="bl-dlabel">You end with</div>' +
+        '<div class="bl-dtext">' + linkify(it.outcome) + "</div></div>";
+    }
     if (it.first) {
       h += '<div class="bl-d"><div class="bl-dlabel">Start here</div>' +
         '<div class="bl-first">' + linkify(it.first) + "</div></div>";
@@ -417,6 +422,7 @@ var Backlog = (function () {
       '<textarea id="bl-steps" class="bl-input bl-area" rows="3" placeholder="Steps, one per line"></textarea>' +
       '<input id="bl-where" class="bl-input" type="text" maxlength="80" placeholder="Where, like: Living room floor" autocomplete="off">' +
       '<textarea id="bl-need" class="bl-input bl-area" rows="2" placeholder="What you need: things or links, one per line"></textarea>' +
+      '<input id="bl-outcome" class="bl-input" type="text" maxlength="120" placeholder="You end with, like: A first draft" autocomplete="off">' +
       '<button class="btn bl-save" id="bl-save">' + (editing ? "Save" : "Add") + "</button>" +
       (editing ? "" : '<button class="bl-starterlink" id="bl-starters">Or pick a ready-made idea</button>') +
       "</div>");
@@ -426,12 +432,14 @@ var Backlog = (function () {
     var fSteps = sheet.el.querySelector("#bl-steps");
     var fWhere = sheet.el.querySelector("#bl-where");
     var fNeed = sheet.el.querySelector("#bl-need");
+    var fOutcome = sheet.el.querySelector("#bl-outcome");
     if (editing) {
       input.value = editing.what;
       fFirst.value = editing.first || "";
       fSteps.value = (editing.steps || []).join("\n");
       fWhere.value = editing.where || "";
       fNeed.value = (editing.need || []).join("\n");
+      fOutcome.value = editing.outcome || "";
     } else {
       sheet.el.querySelector("#bl-starters").addEventListener("click", function () {
         sheet.close();
@@ -465,7 +473,8 @@ var Backlog = (function () {
         first: fFirst.value.trim() || null,
         steps: lines(fSteps.value),
         where: fWhere.value.trim() || null,
-        need: lines(fNeed.value)
+        need: lines(fNeed.value),
+        outcome: fOutcome.value.trim() || null
       };
       sheet.close();
       if (editing) {
@@ -475,6 +484,7 @@ var Backlog = (function () {
         if (tag !== (editing.tag || null)) fields.tag = tag;
         if (extra.first !== (editing.first || null)) fields.first = extra.first;
         if (extra.where !== (editing.where || null)) fields.where = extra.where;
+        if (extra.outcome !== (editing.outcome || null)) fields.outcome = extra.outcome;
         if (JSON.stringify(extra.steps) !== JSON.stringify(editing.steps || [])) fields.steps = extra.steps;
         if (JSON.stringify(extra.need) !== JSON.stringify(editing.need || [])) fields.need = extra.need;
         if (!Object.keys(fields).length) return;
@@ -532,7 +542,7 @@ var Backlog = (function () {
       return '<button class="fchip gap-tag' + (t === cur ? " on" : "") + '" data-tag="' + t + '">' + icon(t === "All" ? "Any" : t) + t + "</button>";
     }).join("");
     var sheet = openSheet("Ready-made ideas",
-      "Each one comes with a first step, steps, where, and what you need. Tap one to see it all.",
+      "Each one ends with something real: a draft, a diagram, a fixed weak spot. Tap one to see it all.",
       '<div class="fchips gap-tags">' + chips + "</div>" +
       '<div class="bl-full bl-starters" id="bl-starterrows"></div>');
 
@@ -543,7 +553,7 @@ var Backlog = (function () {
         var added = haveStarter(st);
         return '<div class="bl-fullrow"><button class="bl-starterrow" data-i="' + i + '">' +
           '<span class="bl-starterwhat">' + esc(st.what) + "</span>" +
-          '<span class="bl-startermeta">' + sizeLabel(st.size) + " · " + st.tag + " · " + esc(st.first) + "</span></button>" +
+          '<span class="bl-startermeta">' + sizeLabel(st.size) + " · " + esc(st.outcome || st.first) + "</span></button>" +
           '<button class="bl-drop bl-take" data-i="' + i + '"' + (added ? " disabled" : "") + ">" +
           (added ? "Added" : "Add") + "</button></div>";
       }).join("");
